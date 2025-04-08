@@ -30,8 +30,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 i_sd += std::pow(data[x+i*nx] - means[i], 2);
             }
             double denominator = std::sqrt(j_sd) * std::sqrt(i_sd);
-            std::cout << "j: " << j << "  i: " << i  << "  ";
-            std::cout << "corr: " << numerator / denominator << "  numerator: " << numerator << "denominator: " << denominator << "\n";
             result[i+j*ny] = (float)(numerator / denominator);
         }
     }
