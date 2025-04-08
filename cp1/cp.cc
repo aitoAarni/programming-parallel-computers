@@ -11,6 +11,8 @@ This is the function you need to implement. Quick reference:
 */
 void correlate(int ny, int nx, const float *data, float *result) {
     std::vector<double> means(ny, 0.0);
+    std::vector<double> sd(ny, 0.0);
+
     for (int y = 0; y < ny; y++) {
         double sum = 0;
         for (int x = 0; x < nx; x++) {
@@ -18,18 +20,19 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
         means[y] = sum / nx;
     }
+    
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+                sd[y] += std::pow(data[x+y*nx] - means[y], 2);
+        }
+    }
     for (int j = 0; j < ny; j++) {
         for (int i = j; i < ny; i++) {
-
             double numerator = 0;
-            double j_sd = 0;
-            double i_sd = 0;
             for (int x = 0; x < nx; x++) {
                 numerator += (data[x+j*nx] - means[j]) * (data[x+i*nx] - means[i]);
-                j_sd += std::pow(data[x+j*nx] - means[j], 2);
-                i_sd += std::pow(data[x+i*nx] - means[i], 2);
             }
-            double denominator = std::sqrt(j_sd) * std::sqrt(i_sd);
+            double denominator = std::sqrt(sd[j]) * std::sqrt(sd[i]);
             result[i+j*ny] = (float)(numerator / denominator);
         }
     }
