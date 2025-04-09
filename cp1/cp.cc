@@ -41,16 +41,17 @@ void correlate(int ny, int nx, const float *data, float *result) {
     }
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < nx; x++) {
-            squareNormalized[y] = zeroNormalized[x+y*nx] - (squareSums[y] - 1);
+            squareNormalized[y] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
         }
     }
 
     for (int j = 0; j < ny; j++) {
-        for (int i = 0; i < nx; i++) {
-                result[i + nx*j] = 0;
+        for (int i = 0; i < ny; i++) {
+            double sum = 0;
             for (int x = 0; x < nx; x++) {
-                result[i + nx*j] += squareNormalized[x + nx * j] * squareNormalized[x+ nx * i];
+                sum += squareNormalized[x + nx * j] * squareNormalized[x+ nx * i];
             }
+            result[i + j * ny] = (float)(sum);
         }
     }
 }
