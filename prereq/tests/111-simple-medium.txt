@@ -1,2 +1,0 @@
-timeout 0.5
-simple 50 2 -1 -1
