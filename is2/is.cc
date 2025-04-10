@@ -72,6 +72,33 @@ Result segment(int ny, int nx, const float *data) {
             b_sum_square[y][x] = square_sum_b;
         }
     }
+    double lowest_score = 100000;
+    int lowest_coordinates[4];
+    for (int y0 = 0; y0 < ny; y0++) {
+        for (int x0 = 0; x0 < nx; x0++) {
+            for (int y1 = y0; y1 < ny; y1++){
+                for (int x1 = x0 ; x1 < nx; x1++) {
+                    double r_sum = r_rec_sum[y1][x1];
+                    double r_square_sum = r_sum_square[y1][x1];
+                    if (y0 > 0) {
+                        r_sum -= r_rec_sum[y0-1][x1];
+                        r_square_sum -= r_sum_square[y0-1][x1];   
+                    }
+                    if (x0 > 0) {
+                        r_sum -= r_rec_sum[y1][x0-1];
+                        r_square_sum -= r_sum_square[y1][x0-1];   
+                    }
+                    if (y0>0 & x0>0) {
+                        r_sum += r_rec_sum[y0-1][x0-1];
+                        r_square_sum += r_sum_square[y0-1][x0-1];   
+                    }
+                    
+                }
+            }
+
+        }
+    }
+
     std::cout << "\n\rectangles\n";
     for (int y = 0; y<ny; y++) {
         std::cout << "\n";
