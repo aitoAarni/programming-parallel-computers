@@ -73,7 +73,6 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
     double lowest_score = 100000;
-    int lowest_coordinates[4];
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
@@ -102,7 +101,7 @@ Result segment(int ny, int nx, const float *data) {
                         b_sum -= b_rec_sum[y1][x0-1];
                         b_square_sum -= b_sum_square[y1][x0-1];   
                     }
-                    if (y0>0 & x0>0) {
+                    if (y0>0 && x0>0) {
                         r_sum += r_rec_sum[y0-1][x0-1];
                         r_square_sum += r_sum_square[y0-1][x0-1];   
                         g_sum += g_rec_sum[y0-1][x0-1];
@@ -159,4 +158,43 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
     return result;
+}
+
+int main() {
+    const int ny = 2;
+    const int nx = 2;
+
+    // Sample image data (2x2 image with RGB, so 2 * 2 * 3 = 12 floats)
+    float data[] = {
+        1, 2, 3,   // pixel (0, 0)
+        4, 5, 6,   // pixel (0, 1)
+        7, 8, 9,   // pixel (1, 0)
+        10, 11, 12 // pixel (1, 1)
+    };
+
+    float data2[] = {
+        0.1, 0.1, 0.1,
+        0.2, 0.2, 0.2,
+        0.3, 0.3, 0.3,
+        0.4, 0.4, 0.4,
+        0.5, 0.5, 0.5,
+        0.6, 0.6, 0.6,
+        0.7, 0.7, 0.7,
+        0.8, 0.8, 0.8,
+        0.9, 0.9, 0.9,
+    };
+
+    Result res = segment(3, 3, data2);
+
+    std::cout << "Result rectangle: (" 
+              << res.y0 << "," << res.x0 << ") -> (" 
+              << res.y1 << "," << res.x1 << ")\n";
+
+    std::cout << "Outer color: [" 
+              << res.outer[0] << ", " << res.outer[1] << ", " << res.outer[2] << "]\n";
+
+    std::cout << "Inner color: [" 
+              << res.inner[0] << ", " << res.inner[1] << ", " << res.inner[2] << "]\n";
+
+    return 0;
 }
