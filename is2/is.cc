@@ -82,25 +82,54 @@ Result segment(int ny, int nx, const float *data) {
 
                     double r_sum = r_rec_sum[y1][x1];
                     double r_square_sum = r_sum_square[y1][x1];
+                    double g_sum = g_rec_sum[y1][x1];
+                    double b_sum = b_rec_sum[y1][x1];
+                    double g_square_sum = g_sum_square[y1][x1];
+                    double b_square_sum = b_sum_square[y1][x1];
                     if (y0 > 0) {
                         r_sum -= r_rec_sum[y0-1][x1];
                         r_square_sum -= r_sum_square[y0-1][x1];   
+                        g_sum -= g_rec_sum[y0-1][x1];
+                        g_square_sum -= g_sum_square[y0-1][x1];   
+                        b_sum -= b_rec_sum[y0-1][x1];
+                        b_square_sum -= b_sum_square[y0-1][x1];   
                     }
                     if (x0 > 0) {
                         r_sum -= r_rec_sum[y1][x0-1];
                         r_square_sum -= r_sum_square[y1][x0-1];   
+                        g_sum -= g_rec_sum[y1][x0-1];
+                        g_square_sum -= g_sum_square[y1][x0-1];   
+                        b_sum -= b_rec_sum[y1][x0-1];
+                        b_square_sum -= b_sum_square[y1][x0-1];   
                     }
                     if (y0>0 & x0>0) {
                         r_sum += r_rec_sum[y0-1][x0-1];
                         r_square_sum += r_sum_square[y0-1][x0-1];   
+                        g_sum += g_rec_sum[y0-1][x0-1];
+                        g_square_sum += g_sum_square[y0-1][x0-1];   
+                        b_sum += b_rec_sum[y0-1][x0-1];
+                        b_square_sum += b_sum_square[y0-1][x0-1];   
                     }
                     int rec_size = (x1-x0+1) * (y1-y0 + 1);
                     int background_size = ny * nx -rec_size;
+                
                     double r_background_sum = r_rec_sum[ny-1][nx-1] - r_sum;
                     double r_background_square_sum = r_sum_square[ny-1][nx-1] - r_square_sum;
                     double r_rec_sse = r_square_sum - ((r_sum * r_sum) / (rec_size));
                     double r_background_sse = r_background_square_sum - ((r_background_sum * r_background_sum) / background_size);
-                    total_sse += r_rec_sse + r_background_sse;
+                    
+                    double g_background_sum = g_rec_sum[ny-1][nx-1] - g_sum;
+                    double g_background_square_sum = g_sum_square[ny-1][nx-1] - g_square_sum;
+                    double g_rec_sse = g_square_sum - ((g_sum * g_sum) / (rec_size));
+                    double g_background_sse = g_background_square_sum - ((g_background_sum * g_background_sum) / background_size);
+
+                    double b_background_sum = b_rec_sum[ny-1][nx-1] - b_sum;
+                    double b_background_square_sum = b_sum_square[ny-1][nx-1] - b_square_sum;
+                    double b_rec_sse = b_square_sum - ((b_sum * b_sum) / (rec_size));
+                    double b_background_sse = b_background_square_sum - ((b_background_sum * b_background_sum) / background_size);
+
+
+                    total_sse += r_rec_sse + r_background_sse + g_rec_sse + g_background_sse + b_rec_sse + b_background_sse;
                 
 
                     if (total_sse < lowest_score) {
@@ -111,6 +140,10 @@ Result segment(int ny, int nx, const float *data) {
                         result.x1 = x1;
                         result.inner[0] = r_sum / rec_size;
                         result.outer[0] = r_background_sum / background_size;
+                        result.inner[1] = g_sum / rec_size;
+                        result.outer[1] = g_background_sum / background_size;
+                        result.inner[2] = b_sum / rec_size;
+                        result.outer[2] = b_background_sum / background_size;
                     }
                 }
             }
