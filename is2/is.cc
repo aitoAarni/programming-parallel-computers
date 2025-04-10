@@ -22,7 +22,7 @@ This is the function you need to implement. Quick reference:
 - input: data[c + 3 * x + 3 * nx * y]
 */
 Result segment(int ny, int nx, const float *data) {
-    r_rec_sum[0][0] = data[0];
+    Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     for (int y = 0; y<ny; y++) {
         std::cout << "\n";
         for (int x = 0; x < nx; x++) {
@@ -78,6 +78,8 @@ Result segment(int ny, int nx, const float *data) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
                 for (int x1 = x0 ; x1 < nx; x1++) {
+                    double total_sse = 0;
+
                     double r_sum = r_rec_sum[y1][x1];
                     double r_square_sum = r_sum_square[y1][x1];
                     if (y0 > 0) {
@@ -92,7 +94,24 @@ Result segment(int ny, int nx, const float *data) {
                         r_sum += r_rec_sum[y0-1][x0-1];
                         r_square_sum += r_sum_square[y0-1][x0-1];   
                     }
-                    
+                    int rec_size = (x1-x0+1) * (y1-y0 + 1);
+                    int background_size = ny * nx -rec_size;
+                    double r_background_sum = r_rec_sum[ny-1][nx-1] - r_sum;
+                    double r_background_square_sum = r_sum_square[ny-1][nx-1] - r_square_sum;
+                    double r_rec_sse = r_square_sum - ((r_sum * r_sum) / (rec_size));
+                    double r_background_sse = r_background_square_sum - ((r_background_sum * r_background_sum) / background_size);
+                    total_sse += r_rec_sse + r_background_sse;
+                
+
+                    if (total_sse < lowest_score) {
+                        lowest_score = total_sse;
+                        result.y0 = y0;
+                        result.x0 = x0;
+                        result.y1 = y1;
+                        result.x1 = x1;
+                        result.inner[0] = r_sum / rec_size;
+                        result.outer[0] = r_background_sum / background_size;
+                    }
                 }
             }
 
@@ -106,6 +125,5 @@ Result segment(int ny, int nx, const float *data) {
             std::cout << r_rec_sum[y][x] << " ";
         }
     }
-    Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     return result;
 }
