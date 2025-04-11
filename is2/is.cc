@@ -73,7 +73,7 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
     std::cout << "\n\n";
-    double lowest_score = 10000000;
+    double lowest_score = 10e+20;
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
