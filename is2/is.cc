@@ -73,7 +73,7 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
     std::cout << "\n\n";
-    double lowest_score = 100000;
+    double lowest_score = 10000000;
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
@@ -118,11 +118,11 @@ Result segment(int ny, int nx, const float *data) {
                     double r_rec_sse = r_square_sum - ((r_sum * r_sum) / (rec_size));
                     double r_background_sse = r_background_square_sum - ((r_background_sum * r_background_sum) / background_size);
                     
-                    if (x0 == 1 && x1 == 1) {
-                        std::cout << "\n\nx0 and x1 \n";
-                        std::cout << "r_sum: " << r_sum << "  r_square_sum: " << r_square_sum << "  rec_size: " << rec_size << "  background size: " << background_size << "\n";
-                        
-                    }
+//                    if (x0 == 1 && x1 == 1) {
+//                        std::cout << "\n\nx0 and x1 \n";
+//                        std::cout << "r_sum: " << r_sum << "  r_square_sum: " << r_square_sum << "  rec_size: " << rec_size << "  background size: " << background_size << "\n";
+//                        
+//                    }
                     
                     double g_background_sum = g_rec_sum[ny-1][nx-1] - g_sum;
                     double g_background_square_sum = g_sum_square[ny-1][nx-1] - g_square_sum;
