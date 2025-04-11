@@ -72,6 +72,7 @@ Result segment(int ny, int nx, const float *data) {
             b_sum_square[y][x] = square_sum_b;
         }
     }
+    std::cout << "\n\n";
     double lowest_score = 100000;
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
@@ -117,6 +118,12 @@ Result segment(int ny, int nx, const float *data) {
                     double r_rec_sse = r_square_sum - ((r_sum * r_sum) / (rec_size));
                     double r_background_sse = r_background_square_sum - ((r_background_sum * r_background_sum) / background_size);
                     
+                    if (x0 == 1 && x1 == 1) {
+                        std::cout << "\n\nx0 and x1 \n";
+                        std::cout << "r_sum: " << r_sum << "  r_square_sum: " << r_square_sum << "  rec_size: " << rec_size << "  background size: " << background_size << "\n";
+                        
+                    }
+                    
                     double g_background_sum = g_rec_sum[ny-1][nx-1] - g_sum;
                     double g_background_square_sum = g_sum_square[ny-1][nx-1] - g_square_sum;
                     double g_rec_sse = g_square_sum - ((g_sum * g_sum) / (rec_size));
@@ -130,8 +137,10 @@ Result segment(int ny, int nx, const float *data) {
 
                     total_sse += r_rec_sse + r_background_sse + g_rec_sse + g_background_sse + b_rec_sse + b_background_sse;
                 
-
-                    if (total_sse < lowest_score) {
+                    std::cout << "(" << x0 << ", " << y0 << "), (" << x1 << ", " << y1 << ")" << std::endl;
+                    std::cout << r_rec_sse << " " << g_rec_sse << " " << b_rec_sse << " " << r_background_sse << " " << g_background_sse << " " << b_background_sse << "\n";
+                    std::cout << "total sse: " << total_sse << "\n\n";  
+                    if (total_sse <= lowest_score) {
                         lowest_score = total_sse;
                         result.y0 = y0;
                         result.x0 = x0;
@@ -150,41 +159,19 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
 
-    std::cout << "\n\rectangles\n";
+    std::cout << "\nrectangles";
     for (int y = 0; y<ny; y++) {
         std::cout << "\n";
         for (int x = 0; x < nx; x++) {
             std::cout << r_rec_sum[y][x] << " ";
         }
     }
+    std::cout << "\nsquares";
+    for (int y = 0; y<ny; y++) {
+        std::cout << "\n";
+        for (int x = 0; x < nx; x++) {
+            std::cout << r_sum_square[y][x] << " ";
+        }
+    }
     return result;
-}
-
-int main() {
-
-    float data2[] = {
-        0.5, 0.3, 0.7,
-        0.5, 0.3, 0.7,
-        0.2, 0.0, 0.0,
-        0.5, 0.3, 0.7,
-        0.5, 0.3, 0.7,
-        0.2, 0.0, 0.0,
-        0.2, 0.0, 0.0,
-        0.2, 0.0, 0.0,
-        0.2, 0.0, 0.0,
-    };
-
-    Result res = segment(3, 3, data2);
-
-    std::cout << "Result rectangle: (" 
-              << res.y0 << "," << res.x0 << ") -> (" 
-              << res.y1 << "," << res.x1 << ")\n";
-
-    std::cout << "Outer color: [" 
-              << res.outer[0] << ", " << res.outer[1] << ", " << res.outer[2] << "]\n";
-
-    std::cout << "Inner color: [" 
-              << res.inner[0] << ", " << res.inner[1] << ", " << res.inner[2] << "]\n";
-
-    return 0;
 }
