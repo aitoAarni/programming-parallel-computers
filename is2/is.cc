@@ -144,8 +144,8 @@ Result segment(int ny, int nx, const float *data) {
                         lowest_score = total_sse;
                         result.y0 = y0;
                         result.x0 = x0;
-                        result.y1 = y1;
-                        result.x1 = x1;
+                        result.y1 = y1 + 1;
+                        result.x1 = x1 + 1;
                         result.inner[0] = r_sum / rec_size;
                         result.outer[0] = r_background_sum / background_size;
                         result.inner[1] = g_sum / rec_size;
