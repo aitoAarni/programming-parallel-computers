@@ -9,12 +9,12 @@ struct Result {
     float inner[3];
 };
 
-double r_rec_sum[100][100];
-double g_rec_sum[100][100];
-double b_rec_sum[100][100];
-double r_sum_square[100][100];
-double g_sum_square[100][100];
-double b_sum_square[100][100];
+double r_rec_sum[70][70];
+double g_rec_sum[70][70];
+double b_rec_sum[70][70];
+double r_sum_square[70][70];
+double g_sum_square[70][70];
+double b_sum_square[70][70];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -52,25 +52,31 @@ Result segment(int ny, int nx, const float *data) {
                     sum_r -= r_rec_sum[y-1][x-1];
                     sum_g -= g_rec_sum[y-1][x-1];
                     sum_b -= b_rec_sum[y-1][x-1];
-                    square_sum_r += r_sum_square[y-1][x-1];
-                    square_sum_g += g_sum_square[y-1][x-1];
-                    square_sum_b += b_sum_square[y-1][x-1];
+                    square_sum_r -= r_sum_square[y-1][x-1];
+                    square_sum_g -= g_sum_square[y-1][x-1];
+                    square_sum_b -= b_sum_square[y-1][x-1];
                 }
             }
             sum_r += data[baseIndex];
             sum_g += data[baseIndex + 1];
             sum_b += data[baseIndex + 2];
-            square_sum_r += data[baseIndex] * data[baseIndex];
+            double add_r =  data[baseIndex] * data[baseIndex];
+            if (y<3) {
+                std::cout << "curr val: " << data[baseIndex] << "  x: " << x << "  y: " << y << "\n";
+                std::cout << "square_sum_r bef: " << square_sum_r << "  value to add: " << add_r << "\n\n";
+            } 
+            square_sum_r += add_r;
+            r_sum_square[y][x] = square_sum_r;
             square_sum_g += data[baseIndex + 1] * data[baseIndex + 1];
             square_sum_b += data[baseIndex + 2] * data[baseIndex + 2];
             r_rec_sum[y][x] = sum_r;
             g_rec_sum[y][x] = sum_g;
             b_rec_sum[y][x] = sum_b;
-            r_sum_square[y][x] = square_sum_r;
             g_sum_square[y][x] = square_sum_g;
             b_sum_square[y][x] = square_sum_b;
         }
     }
+    std::cout << "whole board sum: " << r_rec_sum[ny-1][nx-1] << "  whole board square: " << r_sum_square[ny-1][nx-1];
     double lowest_score = 10e+50;
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
@@ -132,7 +138,7 @@ Result segment(int ny, int nx, const float *data) {
                 
                     // std::cout << "total sse: " << total_sse << "\n\n";  
                     if (y0 == 2 && x0 == 20 && y1 == 21 && x1 == 25 && total_sse == 901749768993730068480.0) {
-                        std::cout << std::fixed << std::setprecision(30) << "righ answer " << total_sse << "result.inner[0]: " << r_sum / rec_size << "result.outer[0]: " << r_background_sum / background_size;
+                        // std::cout << std::fixed << std::setprecision(30) << "righ answer " << total_sse << "result.inner[0]: " << r_sum / rec_size << "result.outer[0]: " << r_background_sum / background_size;
                         lowest_score = total_sse;
                         result.y0 = y0;
                         result.x0 = x0;
