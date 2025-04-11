@@ -8,12 +8,12 @@ struct Result {
     float inner[3];
 };
 
-double r_rec_sum[50][50];
-double g_rec_sum[50][50];
-double b_rec_sum[50][50];
-double r_sum_square[50][50];
-double g_sum_square[50][50];
-double b_sum_square[50][50];
+double r_rec_sum[100][100];
+double g_rec_sum[100][100];
+double b_rec_sum[100][100];
+double r_sum_square[100][100];
+double g_sum_square[100][100];
+double b_sum_square[100][100];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -24,10 +24,8 @@ This is the function you need to implement. Quick reference:
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     for (int y = 0; y<ny; y++) {
-        std::cout << "\n";
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
-            std::cout << data[baseIndex] << " ";
             double sum_r = 0;
             double sum_g = 0;
             double sum_b = 0;
@@ -72,7 +70,6 @@ Result segment(int ny, int nx, const float *data) {
             b_sum_square[y][x] = square_sum_b;
         }
     }
-    std::cout << "\n\n";
     double lowest_score = 10e+20;
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
@@ -118,11 +115,6 @@ Result segment(int ny, int nx, const float *data) {
                     double r_rec_sse = r_square_sum - ((r_sum * r_sum) / (rec_size));
                     double r_background_sse = r_background_square_sum - ((r_background_sum * r_background_sum) / background_size);
                     
-//                    if (x0 == 1 && x1 == 1) {
-//                        std::cout << "\n\nx0 and x1 \n";
-//                        std::cout << "r_sum: " << r_sum << "  r_square_sum: " << r_square_sum << "  rec_size: " << rec_size << "  background size: " << background_size << "\n";
-//                        
-//                    }
                     
                     double g_background_sum = g_rec_sum[ny-1][nx-1] - g_sum;
                     double g_background_square_sum = g_sum_square[ny-1][nx-1] - g_square_sum;
@@ -137,8 +129,6 @@ Result segment(int ny, int nx, const float *data) {
 
                     total_sse += r_rec_sse + r_background_sse + g_rec_sse + g_background_sse + b_rec_sse + b_background_sse;
                 
-                    std::cout << "(" << x0 << ", " << y0 << "), (" << x1 << ", " << y1 << ")" << std::endl;
-                    std::cout << r_rec_sse << " " << g_rec_sse << " " << b_rec_sse << " " << r_background_sse << " " << g_background_sse << " " << b_background_sse << "\n";
                     std::cout << "total sse: " << total_sse << "\n\n";  
                     if (total_sse <= lowest_score) {
                         lowest_score = total_sse;
