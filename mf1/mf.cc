@@ -30,20 +30,24 @@ void mf(int ny, int nx, int hy, int hx, const float *in, float *out) {
         std::nth_element(range.begin(), range.begin() + mid, range.end());
         median = range[mid];
       } else {
-        int mid = range.size() / 2 - 1;
+        int mid = range.size() / 2;
         std::nth_element(range.begin(), range.begin() +  mid, range.end());
-        median = (range[mid] + range[mid+1]) / (double)2;
+        double median1 = range[mid];
+        std::nth_element(range.begin(), range.begin() +  --mid, range.end());
+        std::cout << "mid: " << mid << " ";
+        median = (range[mid] + median1) / (double)2;
       }
+      out[x + y * nx] = median;
       std::cout << "median: " << median;
     }
   }
 }
 
 int main() {
-  float in[9] = {3, 4, 5, 6, 7, 8, 9, 10, 11};
-  float out[9];
+  float in[4] = {0, 0, 1, 4};
+  float out[4];
 
-  mf(3, 3, 1, 2, in, out);
+  mf(2, 2, 1, 1, in, out);
 
   return 0;
 }
