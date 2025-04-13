@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
+double normalized[16000000];
 /*
 This is the function you need to implement. Quick reference:
 - input rows: 0 <= y < ny
@@ -10,49 +11,44 @@ This is the function you need to implement. Quick reference:
 - only parts with 0 <= j <= i < ny need to be filled
 */
 void correlate(int ny, int nx, const float *data, float *result) {
-    std::vector<double> means(ny, 0.0);
-    std::vector<double> squareSums(ny, 0.0);
-    std:: vector<double> zeroNormalized(16000000, 0.0);   
-    std::vector<double> squareNormalized(16000000, 0.0);
+    
     for (int y = 0; y < ny; y++) {
         double sum = 0;
         for (int x = 0; x < nx; x++) {
             sum += data[x+y*nx];
         }
-        means[y] = sum / nx;
+        double mean = sum / nx;
+        for (int x = 0; x < nx; x++) {
+           normalized[x+y*nx] = data[x+y*nx] - mean;  
+        }
+        double squareSum = 0;
+        for (int x = 0; x < nx; x++) {
+            squareSum += std::pow(normalized[x+y*nx], 2);           
+        }
+        for (int x = 0; x < nx; x++) {
+            normalized[x + y * nx] = normalized[x+y*nx] / std::sqrt(squareSum);
+        }
     }
     
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-           zeroNormalized[x+y*nx] = data[x+y*nx] - means[y]; 
-        }
-    }
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            squareSums[y] += std::pow(zeroNormalized[x+y*nx], 2);           
-        }
-    }
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            squareNormalized[x + y * nx] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
-        }
-    }
-
 
     for (int j = 0; j < ny; j++) {
         for (int i = j; i < ny; i++) {
-            double sum = 0;
-            int x;
-            for (x = 0; x + 3 < nx; x += 4) {
-                sum += squareNormalized[x + nx * j] * squareNormalized[x + nx * i];
-                sum += squareNormalized[x + 1 + nx * j] * squareNormalized[x + 1 + nx * i];
-                sum += squareNormalized[x + 2 + nx * j] * squareNormalized[x + 2 + nx * i];
-                sum += squareNormalized[x + 3 + nx * j] * squareNormalized[x + 3 + nx * i];
+            double sum1 = 0;
+            double sum2 = 0;
+            int x = 0;
+            for (; x + 1 < nx; x += 2) {
+                double a0 = normalized[x + nx * j];
+                double b0 = normalized[x + nx * i];
+                double a1 = normalized[x + 1 + nx * j];
+                double b1 = normalized[x + 1 + nx * i];
+                
+                sum1 += a0 * b0;
+                sum2 += a1 * b1;
             }
-            for (; x < nx; x++) {
-                sum += squareNormalized[x + nx * j] * squareNormalized[x + nx * i];
-}
-            result[i + j * ny] = (float)(sum);
+            if (x < nx) {
+                sum1 += normalized[x + j * nx] * normalized[x + i * nx];
+            }
+            result[i + j * ny] = sum1 + sum2;
         }
     }
 }
