@@ -19,7 +19,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
     int newX = (nx + 3) / 4;    
     std::vector<double4_t> normalized(ny*newX);
     std::vector<double4_t> d(ny * newX);
-    std::vector<double4_t> t(ny * newX);
 
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
@@ -35,9 +34,11 @@ void correlate(int ny, int nx, const float *data, float *result) {
         double sum = 0;
         for (int x = 0; x < nx; x++) {
             sum += data[x+y*nx];
+            
         }
         means[y] = sum / nx;
     }
+    
     
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < nx; x++) {
@@ -49,7 +50,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
             squareSums[y] += std::pow(zeroNormalized[x+y*nx], 2);           
         }
     }
-    
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
             for (int vecX = 0; vecX < 4; vecX++) {
@@ -59,25 +59,56 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
 
-    for (int y = 0; y<ny; y++) {
-        for (int x = 0; x<newX; x++) {
-            for (int vecX = 0; vecX < 4; vecX++) {
-                int i = x*4+vecX;
+    std::cout << "\n right stand\n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < newX; x++) {
+            for (int i = 0; i < 4; i++) {
+                std::cout << normalized[x + y * newX][i] << " ";
             }
         }
+        std::cout << "\n";
     }
-
-
+    
+    for (int y = 0; y < ny; y++) {
+        std::cout << "y: " << y << "\n";
+        double4_t sum = d4zero;
+        for (int x = 0; x < newX; x++) {
+            sum = sum + d[x + y * newX];
+        }
+        std::cout << "sum: " << sum[0] << " " << sum[1] << " " << sum[2] << "\n";
+        double sumDouble = 0;
+        for (int i = 0; i < 4; i++) {
+            sumDouble += sum[i]; 
+        }
+        double4_t mean = {(double)(sumDouble / nx),(double)(sumDouble / nx),(double)(sumDouble / nx),(double)(sumDouble / nx)};
+        for (int x = 0; x < newX; x++) {
+            d[x + y * newX] = d[x + y * newX] - mean;
+        }
+        for (int x = 0; x < newX; x++) {
+            d[x + y * newX] = d[x + y * newX] * d[x + y * newX];
+        }
+    }
+    std::cout << "\n vec stand\n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < newX; x++) {
+            for (int i = 0; i < 4; i++) {
+                std::cout << d[x + y * newX][i] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
+    
+    
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < ny; x++) {
             double4_t sum = d4zero;
             double total_sum = 0;
             for (int i = 0; i < newX; i++) {
-                double4_t a = normalized[i + y * newX];
-                double4_t b = normalized[i + x * newX];
+                double4_t a = d[i + y * newX];
+                double4_t b = d[i + x * newX];
                 a = a * b;
                 sum = sum + a;
-
+                
             }
             for (int i = 0; i < 4; i++) {
                 total_sum += sum[i];
