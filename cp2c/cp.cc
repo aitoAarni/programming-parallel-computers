@@ -84,30 +84,43 @@ void correlate(int ny, int nx, const float *data, float *result) {
     for (int j = 0; j < ny; j++) {
         for (int i = j; i < ny; i++) {
             double sum = 0;
+            std::cout << "y: " << j << " x: " << i << "\n";
             for (int x = 0; x < nx; x++) {
+                std::cout << squareNormalized[x + nx * j] << " * " << squareNormalized[x + nx * i] << " + ";
                 sum += squareNormalized[x + nx * j] * squareNormalized[x+ nx * i];
             }
-            std::cout << sum << " ";
+            std::cout << "= " << sum;
             result[i + j * ny] = (float)(sum);
+            std::cout << "\n";
         }
-        std::cout << "\n";
     }
+   // for (int y = 0; y < ny; y++) {
+   //     for (int x = 0; x < nx; x++) {
+   //         std::cout << result[x + y*nx] << " ";
+   //     }
+   //     std::cout << "\n";
+    // }
     std::cout << "\nvec result\n";
     for (int y = 0; y < ny; y++) {
-        for (int x = y; x < ny; x++) {
+        for (int x = 0; x < ny; x++) {
             double4_t sum = d4zero;
-            float total_sum = 0;
+            double total_sum = 0;
             for (int i = 0; i < newX; i++) {
-
+                std::cout << "y: " << y << " x: " << x << "\n";
                 double4_t a = normalized[i + y * newX];
                 double4_t b = normalized[i + x * newX];
+                std::cout << a[0]  << " * " << b[0] << " + " << a[1] << " * " << b[1] << " + ";
+                std::cout << a[2]  << " * " << b[2] << " + " << a[3] << " * " << b[3] << " + ";
                 sum += a * b;
+
             }
             for (int i = 0; i < 4; i++) {
                 total_sum += sum[i];
             }
-            std::cout << total_sum << " ";
+            std::cout << "= " << total_sum;
+            result[x + y * ny] = total_sum;
+            // std::cout << total_sum << " ";
+            std::cout << "\n";
         }
-        std::cout << "\n";
     }
 }
