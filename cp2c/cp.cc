@@ -49,11 +49,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
             squareSums[y] += std::pow(zeroNormalized[x+y*nx], 2);           
         }
     }
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            squareNormalized[x + y * nx] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
-        }
-    }
     
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
@@ -63,64 +58,31 @@ void correlate(int ny, int nx, const float *data, float *result) {
             }
         }
     }
-    std::cout << "right answr \n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << squareNormalized[x + nx * y] << " "; 
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\nvector \n";
+
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
             for (int vecX = 0; vecX < 4; vecX++) {
                 int i = x*4+vecX;
-                std::cout << normalized[x + y * newX][vecX] << " ";
             }
         }
-        std::cout << "\n";
     }
-    std::cout << "\n\nreal result\n";
-    for (int j = 0; j < ny; j++) {
-        for (int i = j; i < ny; i++) {
-            double sum = 0;
-            std::cout << "y: " << j << " x: " << i << "\n";
-            for (int x = 0; x < nx; x++) {
-                std::cout << squareNormalized[x + nx * j] << " * " << squareNormalized[x + nx * i] << " + ";
-                sum += squareNormalized[x + nx * j] * squareNormalized[x+ nx * i];
-            }
-            std::cout << "= " << sum;
-            result[i + j * ny] = (float)(sum);
-            std::cout << "\n";
-        }
-    }
-   // for (int y = 0; y < ny; y++) {
-   //     for (int x = 0; x < nx; x++) {
-   //         std::cout << result[x + y*nx] << " ";
-   //     }
-   //     std::cout << "\n";
-    // }
-    std::cout << "\nvec result\n";
+
+
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < ny; x++) {
             double4_t sum = d4zero;
             double total_sum = 0;
             for (int i = 0; i < newX; i++) {
-                std::cout << "y: " << y << " x: " << x << "\n";
                 double4_t a = normalized[i + y * newX];
                 double4_t b = normalized[i + x * newX];
-                std::cout << a[0]  << " * " << b[0] << " + " << a[1] << " * " << b[1] << " + ";
-                std::cout << a[2]  << " * " << b[2] << " + " << a[3] << " * " << b[3] << " + ";
-                sum += a * b;
+                a = a * b;
+                sum = sum + a;
 
             }
             for (int i = 0; i < 4; i++) {
                 total_sum += sum[i];
             }
-            std::cout << "= " << total_sum;
             result[x + y * ny] = total_sum;
-            // std::cout << total_sum << " ";
-            std::cout << "\n";
         }
     }
 }
