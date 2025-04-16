@@ -25,7 +25,7 @@ This is the function you need to implement. Quick reference:
 void correlate(int ny, int nx, const float *data, float *result) {
     int columnBlock = 4;
     int newX = (nx + columnBlock - 1) / columnBlock;    
-    int rowBlock = 3;
+    int rowBlock = 2;
     int newY = (ny + rowBlock - 1) / rowBlock;
     std::vector<double4_t> d(newY * rowBlock * newX);
     for (int y = 0; y<ny; y++) {
@@ -78,25 +78,47 @@ void correlate(int ny, int nx, const float *data, float *result) {
     
     double4_t sum;
     double total_sum;
-    double4_t a;
-    double4_t b;
+    double4_t a0;
+    double4_t b0;
+    
+    double4_t a1;
+    double4_t b1;
+    
     double4_t c;
-    for (int y = 0; y < ny; y++) {
-        for (int x = y; x < ny; x++) {
+    double4_t sums[2][2];
+    for (int y = 0; y < newY; y++) {
+        for (int x = y; x < newY; x++) {
             sum = d4zero;
-            total_sum = 0;
             for (int i = 0; i < newX; i++) {
-                a = d[i + y * newX];
-                b = d[i + x * newX];
-                c = a * b;
-
-                sum += c;
+                y * rowBlock * newX + i;
+                a0 = d[i + y * newX * rowBlock];
+                b0 = d[i + x * newX * rowBlock];
+                a1 = d[i + 1 + x * newX * rowBlock];
+                b1 = d[i + 1 + x * newX * rowBlock];
                 
+                c = a0 * b0;
+                sums[0][0] += c;
+                c = a0 * b1;
+                sums[0][1] += c;
+                c = a1 * b0;
+                sums[1][0] += c;
+                c = a1 * b1;
+                sums[1][1] += c;
             }
-            for (int i = 0; i < 4; i++) {
-                total_sum += sum[i];
+            for (int yy = 0; yy < rowBlock; yy++) {
+                for (int xx = 0; xx < rowBlock; xx++) {
+                    total_sum = 0;
+                    for (int i = 0; i < 4; i++) {
+                        total_sum += sums[yy][xx][i];
+                        }
+                        int xCoord = x * rowBlock + xx;
+                        int yCoord = (y * rowBlock + yy) * ny;
+                        if (xCoord < ny && yCoord < ny) {
+                            result[(x * rowBlock + xx)+ (y * rowBlock + yy)* ny] = total_sum;
+                        }
+                    }
+                }
             }
-            result[x + y * ny] = total_sum;
-        }
+        
     }
 }
