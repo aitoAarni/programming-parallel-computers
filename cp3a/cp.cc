@@ -75,20 +75,51 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
     
-    
     double4_t sum;
     double total_sum;
+    double4_t a;
+    double4_t b;
+    double4_t c;
+    for (int y = 0; y < ny; y++) {
+        for (int x = y; x < ny; x++) {
+            sum = d4zero;
+            total_sum = 0;
+            for (int i = 0; i < newX; i++) {
+                a = d[i + y * newX];
+                b = d[i + x * newX];
+                c = a * b;
+
+                sum += c;
+                
+            }
+            for (int i = 0; i < 4; i++) {
+                total_sum += sum[i];
+            }
+            result[x + y * ny] = total_sum;
+        }
+    }
+    
+    std::cout << "right answer\n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < ny; x++) {
+            std::cout << result[x + y * ny] << " ";
+        }
+        std::cout << "\n";
+    }
     double4_t a0;
     double4_t b0;
     
     double4_t a1;
     double4_t b1;
     
-    double4_t c;
     double4_t sums[2][2];
     for (int y = 0; y < newY; y++) {
         for (int x = y; x < newY; x++) {
-            sum = d4zero;
+            for (int i = 0; i < rowBlock; i++) {
+                for (int j = 0; j < rowBlock; j++) {
+                    sums[i][j] = d4zero;
+                }
+            }
             for (int i = 0; i < newX; i++) {
                 y * rowBlock * newX + i;
                 a0 = d[i + y * newX * rowBlock];
@@ -115,10 +146,18 @@ void correlate(int ny, int nx, const float *data, float *result) {
                         int yCoord = (y * rowBlock + yy) * ny;
                         if (xCoord < ny && yCoord < ny) {
                             result[(x * rowBlock + xx)+ (y * rowBlock + yy)* ny] = total_sum;
+
                         }
                     }
                 }
             }
-        
+    }
+    
+    std::cout << "new answer \n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < ny; x++) {
+            std::cout << result[x + y * ny] << " ";
+        }
+        std::cout << "\n";
     }
 }
