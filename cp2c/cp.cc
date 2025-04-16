@@ -17,7 +17,7 @@ double4_t sqrt_vector(double4_t v) {
 /*
 This is the function you need to implement. Quick reference:
 - input rows: 0 <= y < ny
-- input columns: 0 <= x < nx
+- input columns: 0 <= x < x
 - element at row y and column x is stored in data[x + y*nx]
 - correlation between rows i and row j has to be stored in result[i + j*ny]
 - only parts with 0 <= j <= i < ny need to be filled
@@ -28,7 +28,15 @@ void correlate(int ny, int nx, const float *data, float *result) {
     int newX = (nx + 3) / 4;    
     std::vector<double4_t> normalized(ny*newX);
     std::vector<double4_t> d(ny * newX);
-
+    std::cout << "nx: " << nx << "  ny: " << ny << "\n";
+    std::cout << "start vec: \n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            // std::cout << data[x + y *nx] << " ";
+            std::cout << x << ", " << y << "  ";
+        }
+        std::cout << "\n";
+    }
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
             for (int vecX = 0; vecX < 4; vecX++) {
@@ -90,11 +98,15 @@ void correlate(int ny, int nx, const float *data, float *result) {
             sumDouble += sum[i]; 
         }
         double4_t mean = {(double)(sumDouble / nx),(double)(sumDouble / nx),(double)(sumDouble / nx),(double)(sumDouble / nx)};
+        std::cout << "mean: " << sumDouble / nx << "\n";
         for (int x = 0; x < newX; x++) {
             d[x + y * newX] = d[x + y * newX] - mean;
         }
         for (int x = 1; x < 4; x++) {
-            if (4 * (newX - 1) + x >= nx) d[newX * 4 + y * newX][x] = 0;
+            if ((newX - 1) + x >= nx) {
+                d[(newX - 1) + y * newX][x] = 0;
+                std::cout << "over the limit y:" << y << "  x: " << x << "\n";
+            }
         }
         double4_t c = d[0 + y * newX];
         
@@ -113,7 +125,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
             d[x + y * newX] = d[x + y * newX] / sqrt_vector(denominator);
         }
         for (int x = 1; x < 4; x++) {
-            if (4 * (newX - 1) + x >= nx) d[newX * 4 + y * newX][x] = 0;
+            if ((newX - 1) + x >= nx) d[( newX - 1) + y * newX][x] = 0;
         }
     }
     std::cout << "\n vec stand\n";
