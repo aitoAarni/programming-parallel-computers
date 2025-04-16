@@ -8,11 +8,11 @@ constexpr double4_t d4zero = {0, 0, 0, 0};
 
 
 double4_t sqrt_vector(double4_t v) {
-    double4_t result;
+    double4_t r = d4zero;
     for (int i = 0; i < 4; ++i) {
-        result[i] = std::sqrt(v[i]);
+        r[i] = std::sqrt(v[i]);
     }
-    return result;
+    return r;
 }
 /*
 This is the function you need to implement. Quick reference:
@@ -73,15 +73,21 @@ void correlate(int ny, int nx, const float *data, float *result) {
     }
     
     
+    double4_t sum;
+    double total_sum;
+    double4_t a;
+    double4_t b;
+    double4_t c;
     for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < ny; x++) {
-            double4_t sum = d4zero;
-            double total_sum = 0;
+        for (int x = y; x < ny; x++) {
+            sum = d4zero;
+            total_sum = 0;
             for (int i = 0; i < newX; i++) {
-                double4_t a = d[i + y * newX];
-                double4_t b = d[i + x * newX];
-                a = a * b;
-                sum = sum + a;
+                a = d[i + y * newX];
+                b = d[i + x * newX];
+                c = a * b;
+
+                sum += c;
                 
             }
             for (int i = 0; i < 4; i++) {
