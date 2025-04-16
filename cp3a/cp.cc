@@ -38,6 +38,11 @@ void correlate(int ny, int nx, const float *data, float *result) {
     }
     
     
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < ny; x++) {
+            result[x + y * ny] = 0;
+        }
+    }
     
     for (int y = 0; y < ny; y++) {
         double4_t sum = d4zero;
@@ -103,6 +108,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < ny; x++) {
             std::cout << result[x + y * ny] << " ";
+            result[x + y * ny] = 0;
         }
         std::cout << "\n";
     }
@@ -113,8 +119,20 @@ void correlate(int ny, int nx, const float *data, float *result) {
     double4_t b1;
     
     double4_t sums[2][2];
+    std::cout << "table before \n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < ny; x++) {
+            for (int k = 0; k < columnBlock; k++) {
+
+                std::cout << d[x + y * ny][k] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\n\n";
     for (int y = 0; y < newY; y++) {
         for (int x = y; x < newY; x++) {
+            std::cout << "x: " << x << "  real col: " << x * rowBlock;
             for (int i = 0; i < rowBlock; i++) {
                 for (int j = 0; j < rowBlock; j++) {
                     sums[i][j] = d4zero;
@@ -126,7 +144,10 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 b0 = d[i + x * newX * rowBlock];
                 a1 = d[i + 1 + x * newX * rowBlock];
                 b1 = d[i + 1 + x * newX * rowBlock];
-                
+                std::cout << "a0: " << a0[0] << " " << a0[1] << " " << a0[2] << a0[3] << "\n";
+                std::cout << "b0: " << b0[0] << " " << b0[1] << " " << b0[2] << b0[3] << "\n";
+                std::cout << "a1: " << a1[0] << " " << a1[1] << " " << a1[2] << a1[3] << "\n";
+                std::cout << "b1: " << b1[0] << " " << b1[1] << " " << b1[2] << b1[3] << "\n";
                 c = a0 * b0;
                 sums[0][0] += c;
                 c = a0 * b1;
