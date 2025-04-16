@@ -32,8 +32,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
     std::cout << "start vec: \n";
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < nx; x++) {
-            // std::cout << data[x + y *nx] << " ";
-            std::cout << x << ", " << y << "  ";
+            std::cout << data[x + y *nx] << " ";
         }
         std::cout << "\n";
     }
@@ -92,7 +91,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
         for (int x = 0; x < newX; x++) {
             sum = sum + d[x + y * newX];
         }
-        std::cout << "sum: " << sum[0] << " " << sum[1] << " " << sum[2] << "\n";
         double sumDouble = 0;
         for (int i = 0; i < 4; i++) {
             sumDouble += sum[i]; 
@@ -103,14 +101,18 @@ void correlate(int ny, int nx, const float *data, float *result) {
             d[x + y * newX] = d[x + y * newX] - mean;
         }
         for (int x = 1; x < 4; x++) {
-            if ((newX - 1) + x >= nx) {
+            if (4 * (newX - 1) + x >= nx) {
                 d[(newX - 1) + y * newX][x] = 0;
                 std::cout << "over the limit y:" << y << "  x: " << x << "\n";
             }
         }
-        double4_t c = d[0 + y * newX];
-        
-        std::cout << "norm0: " << c[0] << " " <<c[1] << " " <<c[2] << " " <<c[3] << "\n";
+        std::cout << "0 normalized \n";
+        for (int i = 0; i < newX; i++) {
+
+            double4_t c = d[i + y * newX];   
+            std::cout << c[0] << " " <<c[1] << " " <<c[2] << " " <<c[3] << " ";
+        }
+        std::cout << "\n";
         double4_t squareSums = d4zero;
         for (int x = 0; x < newX; x++) {
             double4_t a = d[x + y * newX] * d[x + y * newX];
@@ -125,7 +127,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
             d[x + y * newX] = d[x + y * newX] / sqrt_vector(denominator);
         }
         for (int x = 1; x < 4; x++) {
-            if ((newX - 1) + x >= nx) d[( newX - 1) + y * newX][x] = 0;
+            if (4 * (newX - 1) + x >= nx) d[( newX - 1) + y * newX][x] = 0;
         }
     }
     std::cout << "\n vec stand\n";
