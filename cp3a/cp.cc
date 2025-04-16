@@ -25,9 +25,9 @@ This is the function you need to implement. Quick reference:
 void correlate(int ny, int nx, const float *data, float *result) {
     int columnBlock = 4;
     int newX = (nx + columnBlock - 1) / columnBlock;    
-    //int rowBlock = 3;
-    //int newY = (ny + rowBlock - 1) / rowBlock;
-    std::vector<double4_t> d(ny * newX);
+    int rowBlock = 3;
+    int newY = (ny + rowBlock - 1) / rowBlock;
+    std::vector<double4_t> d(newY * rowBlock * newX);
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
             for (int vecX = 0; vecX < 4; vecX++) {
