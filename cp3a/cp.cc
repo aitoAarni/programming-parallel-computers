@@ -130,9 +130,10 @@ void correlate(int ny, int nx, const float *data, float *result) {
         for (int x = 0; x < newX; x++) {
             for (int ky = 0; ky < rowBlock; ky++) {
                 std::cout << "\n";
+                std::cout << "rowIndex: " << x + (y * 2 + ky) * newX << "| ";
                 for (int k = 0; k < columnBlock; k++) {
                     
-                    std::cout << d[x + (y + ky * 2) * newX][k] << " ";
+                    std::cout << d[x + (y * 2 + ky) * newX][k] << " ";
                 }
             }
         }
