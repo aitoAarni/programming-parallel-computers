@@ -140,6 +140,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
     }
     std::cout << "\n\n";
     for (int y = 0; y < newY; y++) {
+        std::cout << "y:  " << y << " \n";
         for (int x = y; x < newY; x++) {
             std::cout << "x: " << x << "  real col: " << x * rowBlock << "\n";
             for (int i = 0; i < rowBlock; i++) {
@@ -174,11 +175,11 @@ void correlate(int ny, int nx, const float *data, float *result) {
                         total_sum += sums[yy][xx][i];
                         }
                         int xCoord = x * rowBlock + xx;
-                        int yCoord = y * rowBlock * ny + yy;
+                        int yCoord = y * rowBlock + yy;
                         std::cout << "x: " << xCoord << "  y: " << yCoord << "\n";
                         if (xCoord < ny && yCoord < ny) {
-                            std::cout << "From matrix x: " << xx << "  y: " << yy << "\n";
-                            result[(x * rowBlock + xx)+ (y * rowBlock + yy)* ny] = total_sum;
+                            std::cout << "From matrix x: " << xx << "  y: " << yy << "  result[index]: " << xCoord + yCoord * ny << "  sum: " << total_sum << "\n";
+                            result[xCoord + yCoord * ny] = total_sum;
 
                         }
                         std::cout << "\n";
