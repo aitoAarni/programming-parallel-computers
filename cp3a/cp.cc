@@ -23,11 +23,14 @@ This is the function you need to implement. Quick reference:
 - only parts with 0 <= j <= i < ny need to be filled
 */
 void correlate(int ny, int nx, const float *data, float *result) {
-    int columnBlock = 4;
+    constexpr int columnBlock = 4;
+    constexpr int rowBlock = 2;
     int newX = (nx + columnBlock - 1) / columnBlock;    
-    int rowBlock = 2;
-    std::cout << "newX: " << newX << "\n";
     int newY = (ny + rowBlock - 1) / rowBlock;
+    std::cout << "nx: " << nx << "\n";
+    std::cout << "ny: " << ny << "\n";
+    std::cout << "newY: " << newY << "\n";
+    std::cout << "newX: " << newX << "\n";
     std::vector<double4_t> d(newY * rowBlock * newX);
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
@@ -123,14 +126,16 @@ void correlate(int ny, int nx, const float *data, float *result) {
     std::cout << "\n";
     std::cout << "ny" << ny << "\n";
     std::cout << "table before \n";
-    for (int y = 0; y < ny; y++) {
+    for (int y = 0; y < newY; y++) {
         for (int x = 0; x < newX; x++) {
-            for (int k = 0; k < columnBlock; k++) {
-
-                std::cout << d[x + y * newX][k] << " ";
+            for (int ky = 0; ky < rowBlock; ky++) {
+                std::cout << "\n";
+                for (int k = 0; k < columnBlock; k++) {
+                    
+                    std::cout << d[x + (y + ky * 2) * newX][k] << " ";
+                }
             }
         }
-        std::cout << "\n";
     }
     std::cout << "\n\n";
     for (int y = 0; y < newY; y++) {
@@ -145,12 +150,12 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 // y * rowBlock * newX + i;
                 a0 = d[i + y * newX * rowBlock];
                 b0 = d[i + x * newX * rowBlock];
-                a1 = d[i + 1 + x * newX * rowBlock];
-                b1 = d[i + 1 + x * newX * rowBlock];
-                std::cout << "a0: " << a0[0] << " " << a0[1] << " " << a0[2] << " " << a0[3] << "\n";
-                std::cout << "b0: " << b0[0] << " " << b0[1] << " " << b0[2] << " " << b0[3] << "\n";
-                std::cout << "a1: " << a1[0] << " " << a1[1] << " " << a1[2] << " " << a1[3] << "\n";
-                std::cout << "b1: " << b1[0] << " " << b1[1] << " " << b1[2] << " " << b1[3] << "\n";
+                a1 = d[i + y * newX * rowBlock + newX];
+                b1 = d[i + x * newX * rowBlock + newX];
+                std::cout << "index: " << i + y * newX * rowBlock << "  a0: " << a0[0] << " " << a0[1] << " " << a0[2] << " " << a0[3] << "\n";
+                std::cout << "index: " << i + x * newX * rowBlock << "  b0: " << b0[0] << " " << b0[1] << " " << b0[2] << " " << b0[3] << "\n";
+                std::cout << "index: " << i + y * newX * rowBlock + newX << "  a1: " << a1[0] << " " << a1[1] << " " << a1[2] << " " << a1[3] << "\n";
+                std::cout << "index: " << i + x * newX * rowBlock + newX << "  b1: " << b1[0] << " " << b1[1] << " " << b1[2] << " " << b1[3] << "\n";
                 c = a0 * b0;
                 sums[0][0] += c;
                 c = a0 * b1;
