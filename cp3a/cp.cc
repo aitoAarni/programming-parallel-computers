@@ -23,11 +23,8 @@ This is the function you need to implement. Quick reference:
 - only parts with 0 <= j <= i < ny need to be filled
 */
 void correlate(int ny, int nx, const float *data, float *result) {
-    constexpr int columnBlock = 4;
-    constexpr int rowBlock = 2;
-    int newX = (nx + columnBlock - 1) / columnBlock;    
-    int newY = (ny + rowBlock - 1) / rowBlock;
-    std::vector<double4_t> d(newY * rowBlock * newX);
+    int newX = (nx + 3) / 4;    
+    std::vector<double4_t> d(ny * newX);
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
             for (int vecX = 0; vecX < 4; vecX++) {
@@ -38,11 +35,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
     }
     
     
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < ny; x++) {
-            result[x + y * ny] = 0;
-        }
-    }
     
     for (int y = 0; y < ny; y++) {
         double4_t sum = d4zero;
@@ -80,53 +72,30 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
     
+    
+    double4_t sum;
     double total_sum;
+    double4_t a;
+    double4_t b;
     double4_t c;
-    double4_t a0;
-    double4_t b0;
-    
-    double4_t a1;
-    double4_t b1;
-    
-    double4_t sums[2][2];
-    for (int y = 0; y < newY; y++) {
-        for (int x = y; x < newY; x++) {
-            for (int i = 0; i < rowBlock; i++) {
-                for (int j = 0; j < rowBlock; j++) {
-                    sums[i][j] = d4zero;
-                }
-            }
+
+    for (int y = 0; y < ny; y++) {
+        #pragma omp parallel for
+        for (int x = y; x < ny; x++) {
+            sum = d4zero;
+            total_sum = 0;
             for (int i = 0; i < newX; i++) {
-                // y * rowBlock * newX + i;
-                a0 = d[i + y * newX * rowBlock];
-                b0 = d[i + x * newX * rowBlock];
-                a1 = d[i + y * newX * rowBlock + newX];
-                b1 = d[i + x * newX * rowBlock + newX];
-                c = a0 * b0;
-                sums[0][0] += c;
-                c = a0 * b1;
-                sums[0][1] += c;
-                c = a1 * b0;
-                sums[1][0] += c;
-                c = a1 * b1;
-                sums[1][1] += c;
-            }
-            for (int yy = 0; yy < rowBlock; yy++) {
-                for (int xx = 0; xx < rowBlock; xx++) {
-                    total_sum = 0;
-                    for (int i = 0; i < 4; i++) {
-                        total_sum += sums[yy][xx][i];
-                        }
-                        int xCoord = x * rowBlock + xx;
-                        int yCoord = y * rowBlock + yy;
-                        if (xCoord < ny && yCoord < ny) {
-                            result[xCoord + yCoord * ny] = total_sum;
+                a = d[i + y * newX];
+                b = d[i + x * newX];
+                c = a * b;
 
-                        }
-
-                    }
-                }
+                sum += c;
+                
             }
+            for (int i = 0; i < 4; i++) {
+                total_sum += sum[i];
+            }
+            result[x + y * ny] = total_sum;
+        }
     }
-    
 }
