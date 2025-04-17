@@ -73,11 +73,12 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
     
-    
+    constexpr int p = 4;    
+    double total_sum;
     double4_t sum0;
     double4_t sum1;
-    double total_sum0;
-    double total_sum1;
+    double4_t sum2;
+    double4_t sum3;
     double4_t a0;
     double4_t b0;
     double4_t c0;
@@ -85,47 +86,43 @@ void correlate(int ny, int nx, const float *data, float *result) {
     double4_t a1;
     double4_t b1;
     double4_t c1;
-   // std::cout << "data: \n";
-   // for (int y = 0; y < ny; y++) {
-   //     for (int x = 0; x < newX; x++) {
-   //         for (int k = 0; k < columnBlock; k++) {
-   //             std::cout << d[x + y * newX][k] << " ";
-   //         }
-   //     }
-   //     std::cout << "\n";
-   // }
-   // std::cout << "nx: " << nx << "  ny: " << ny << "  newX: " << newX << "\n\n";
-    // #pragma omp parallel for
+    double4_t a2;
+    double4_t b2;
+    double4_t c2;
+    double4_t a3;
+    double4_t b3;
+    double4_t c3;
+    double4_t vv[4][4];
     for (int y = 0; y < ny; y++) {
         for (int x = y; x < ny; x++) {
-            sum0 = d4zero;
-            sum1 = d4zero;
-            total_sum0 = 0;
-            total_sum1 = 0;
+            total_sum = 0;
+            for (int k = 0; k < p; k++) {
+                vv[k][3] = d4zero;
+            }
             int i = 0;
-            for (; i + 1 < newX; i += 2) {
-                a0 = d[i + y * newX];
-                b0 = d[i + x * newX];
-                c0 = a0 * b0;
-                sum0 += c0;
-                a1 = d[i + 1 + y * newX];
-                b1 = d[i + 1 + x * newX];
-                c1 = a1 * b1;
-                sum1 += c1;
+            for (; i + p - 1 < newX; i += p) {
+                for (int k = 0; k < p; k++){
+                    vv[k][0] = d[i + k + y * newX];
+                    vv[k][1] = d[i + k + x * newX];
+                    vv[k][2] = vv[k][0] * vv[k][1];
+                    vv[k][3] += vv[k][2];
+                }
                 
             }
-            if (i < newX) {
-                a0 = d[i + y * newX];
-                b0 = d[i + x * newX];
-                sum0 += a0 * b0;
+            for (int k = 0; k < p - 1; k++) {
+                if (i + k < newX) {
+                    vv[0][0] = d[i + k + y * newX];
+                    vv[0][1] = d[i + k + x * newX];
+                    vv[0][3] += vv[0][0] * vv[0][1];
+                }
+            }
+            for (int k = 1; k < p; k++) {
+                vv[0][3] += vv[k][3];
             }
             for (int i = 0; i < columnBlock; i++) {
-                total_sum0 += sum0[i];
+                total_sum += vv[0][3][i];
             }
-            for (int i = 0; i < columnBlock; i++) {
-                total_sum1 += sum1[i];
-            }
-            result[x + y * ny] = total_sum0 + total_sum1;
+            result[x + y * ny] = total_sum;
         }
     }
 }
