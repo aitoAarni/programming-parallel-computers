@@ -73,56 +73,53 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
     
-    constexpr int p = 4;    
     double total_sum;
-    double4_t sum0;
-    double4_t sum1;
-    double4_t sum2;
-    double4_t sum3;
+    double4_t c;
     double4_t a0;
     double4_t b0;
-    double4_t c0;
-
+    
     double4_t a1;
     double4_t b1;
-    double4_t c1;
-    double4_t a2;
-    double4_t b2;
-    double4_t c2;
-    double4_t a3;
-    double4_t b3;
-    double4_t c3;
-    double4_t vv[4][4];
-    for (int y = 0; y < ny; y++) {
-        for (int x = y; x < ny; x++) {
-            total_sum = 0;
-            for (int k = 0; k < p; k++) {
-                vv[k][3] = d4zero;
-            }
-            int i = 0;
-            for (; i + p - 1 < newX; i += p) {
-                for (int k = 0; k < p; k++){
-                    vv[k][0] = d[i + k + y * newX];
-                    vv[k][1] = d[i + k + x * newX];
-                    vv[k][2] = vv[k][0] * vv[k][1];
-                    vv[k][3] += vv[k][2];
-                }
-                
-            }
-            for (int k = 0; k < p - 1; k++) {
-                if (i + k < newX) {
-                    vv[0][0] = d[i + k + y * newX];
-                    vv[0][1] = d[i + k + x * newX];
-                    vv[0][3] += vv[0][0] * vv[0][1];
+    
+    double4_t sums[2][2];
+    for (int y = 0; y < newY; y++) {
+        for (int x = y; x < newY; x++) {
+            for (int i = 0; i < rowBlock; i++) {
+                for (int j = 0; j < rowBlock; j++) {
+                    sums[i][j] = d4zero;
                 }
             }
-            for (int k = 1; k < p; k++) {
-                vv[0][3] += vv[k][3];
+            for (int i = 0; i < newX; i++) {
+                // y * rowBlock * newX + i;
+                a0 = d[i + y * newX * rowBlock];
+                b0 = d[i + x * newX * rowBlock];
+                a1 = d[i + y * newX * rowBlock + newX];
+                b1 = d[i + x * newX * rowBlock + newX];
+                c = a0 * b0;
+                sums[0][0] += c;
+                c = a0 * b1;
+                sums[0][1] += c;
+                c = a1 * b0;
+                sums[1][0] += c;
+                c = a1 * b1;
+                sums[1][1] += c;
             }
-            for (int i = 0; i < columnBlock; i++) {
-                total_sum += vv[0][3][i];
+            for (int yy = 0; yy < rowBlock; yy++) {
+                for (int xx = 0; xx < rowBlock; xx++) {
+                    total_sum = 0;
+                    for (int i = 0; i < 4; i++) {
+                        total_sum += sums[yy][xx][i];
+                        }
+                        int xCoord = x * rowBlock + xx;
+                        int yCoord = y * rowBlock + yy;
+                        if (xCoord < ny && yCoord < ny) {
+                            result[xCoord + yCoord * ny] = total_sum;
+
+                        }
+
+                    }
+                }
             }
-            result[x + y * ny] = total_sum;
-        }
     }
+    
 }
