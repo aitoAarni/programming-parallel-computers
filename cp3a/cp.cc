@@ -26,6 +26,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
     int columnBlock = 4;
     int newX = (nx + columnBlock - 1) / columnBlock;    
     int rowBlock = 2;
+    std::cout << "newX: " << newX << "\n";
     int newY = (ny + rowBlock - 1) / rowBlock;
     std::vector<double4_t> d(newY * rowBlock * newX);
     for (int y = 0; y<ny; y++) {
@@ -120,12 +121,13 @@ void correlate(int ny, int nx, const float *data, float *result) {
     
     double4_t sums[2][2];
     std::cout << "\n";
+    std::cout << "ny" << ny << "\n";
     std::cout << "table before \n";
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < newX; x++) {
             for (int k = 0; k < columnBlock; k++) {
 
-                std::cout << d[x + y * ny][k] << " ";
+                std::cout << d[x + y * newX][k] << " ";
             }
         }
         std::cout << "\n";
@@ -158,6 +160,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 c = a1 * b1;
                 sums[1][1] += c;
             }
+            std::cout << "\ninsert to result\n";
             for (int yy = 0; yy < rowBlock; yy++) {
                 for (int xx = 0; xx < rowBlock; xx++) {
                     total_sum = 0;
@@ -165,13 +168,18 @@ void correlate(int ny, int nx, const float *data, float *result) {
                         total_sum += sums[yy][xx][i];
                         }
                         int xCoord = x * rowBlock + xx;
-                        int yCoord = (y * rowBlock + yy) * ny;
+                        int yCoord = y * rowBlock * ny + yy;
+                        std::cout << "x: " << xCoord << "  y: " << yCoord << "\n";
                         if (xCoord < ny && yCoord < ny) {
+                            std::cout << "From matrix x: " << xx << "  y: " << yy << "\n";
                             result[(x * rowBlock + xx)+ (y * rowBlock + yy)* ny] = total_sum;
 
                         }
+                        std::cout << "\n";
+
                     }
                 }
+            std::cout << "\n";
             }
     }
     
