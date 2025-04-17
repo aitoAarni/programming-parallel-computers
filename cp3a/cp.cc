@@ -7,7 +7,7 @@ typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double))));
 constexpr double4_t d4zero = {0, 0, 0, 0};
 
 
-double4_t sqrt_vector(double4_t v) {
+static inline double4_t sqrt_vector(double4_t v) {
     double4_t r = d4zero;
     for (int i = 0; i < 4; ++i) {
         r[i] = std::sqrt(v[i]);
@@ -23,20 +23,23 @@ This is the function you need to implement. Quick reference:
 - only parts with 0 <= j <= i < ny need to be filled
 */
 void correlate(int ny, int nx, const float *data, float *result) {
-    int newX = (nx + 3) / 4;    
     constexpr int columnBlock = 4;
-    std::vector<double4_t> d(ny * newX);
-    for (int y = 0; y<ny; y++) {
+    constexpr int rowBlock = 3;
+    const int newX = (nx + columnBlock - 1) / columnBlock;    
+    const int newY = (ny + rowBlock - 1) / rowBlock;
+    const int dataHeight = newY * rowBlock;
+    std::vector<double4_t> d(newY * rowBlock * newX);
+    for (int y = 0; y<dataHeight; y++) {
         for (int x = 0; x<newX; x++) {
-            for (int vecX = 0; vecX < 4; vecX++) {
-                int i = x*4+vecX;
-                d[x + y * newX][vecX] = i < nx ? data[i + y * nx] : 0;
+            for (int vecX = 0; vecX < columnBlock; vecX++) {
+                int i = x*columnBlock+vecX;
+                d[x + y * newX][vecX] = i < nx && y < ny ? data[i + y * nx] : 0;
             }
         }
     }
     
     
-    
+    #pragma omp parallel for
     for (int y = 0; y < ny; y++) {
         double4_t sum = d4zero;
         for (int x = 0; x < newX; x++) {
@@ -64,45 +67,53 @@ void correlate(int ny, int nx, const float *data, float *result) {
         for (int i = 0; i < 4; i++) {
             squareSum += squareSums[i];
         }
-        double4_t denominator = {squareSum, squareSum, squareSum, squareSum};
+        double4_t den = {squareSum, squareSum, squareSum, squareSum};
+        double4_t denominator = sqrt_vector(den);
         for (int x = 0; x < newX; x++) {
-            d[x + y * newX] = d[x + y * newX] / sqrt_vector(denominator);
+            d[x + y * newX] = d[x + y * newX] / denominator;
         }
         for (int x = 1; x < 4; x++) {
             if (4 * (newX - 1) + x >= nx) d[( newX - 1) + y * newX][x] = 0;
         }
     }
+//    std::cout << "ny: " << ny << "  nx: "<< nx << "  rowBlock: " << rowBlock << "  dataHeight: " << dataHeight << "  newY: " << newY << "\n\n";
+//    for (int y = 0; y < dataHeight; y++) {
+//        for (int x = 0; x < newX; x++) {
+//            for (int k = 0; k < columnBlock; k++) {
+//                std::cout << d[x + y * newX][k] << " ";
+//            }
+//        }
+//        std::cout << "\n";
+//    }
     
-    double total_sum;
-    double4_t c;
-    double4_t a0;
-    double4_t b0;
-    
-    double4_t a1;
-    double4_t b1;
-    
-    double4_t sums[2][2];
+    #pragma omp parallel for
     for (int y = 0; y < newY; y++) {
         for (int x = y; x < newY; x++) {
+            double total_sum;
+            double4_t vv[rowBlock][2];
+            double4_t sums[rowBlock][rowBlock];
+            double4_t c[rowBlock][rowBlock];
+            
             for (int i = 0; i < rowBlock; i++) {
                 for (int j = 0; j < rowBlock; j++) {
                     sums[i][j] = d4zero;
                 }
             }
+            
             for (int i = 0; i < newX; i++) {
                 // y * rowBlock * newX + i;
-                a0 = d[i + y * newX * rowBlock];
-                b0 = d[i + x * newX * rowBlock];
-                a1 = d[i + y * newX * rowBlock + newX];
-                b1 = d[i + x * newX * rowBlock + newX];
-                c = a0 * b0;
-                sums[0][0] += c;
-                c = a0 * b1;
-                sums[0][1] += c;
-                c = a1 * b0;
-                sums[1][0] += c;
-                c = a1 * b1;
-                sums[1][1] += c;
+                vv[0][0] = d[i + y * newX * rowBlock];
+                vv[0][1] = d[i + x * newX * rowBlock];
+                vv[1][0] = d[i + y * newX * rowBlock + newX];
+                vv[1][1] = d[i + x * newX * rowBlock + newX];
+                vv[2][0] = d[i + y * newX * rowBlock + newX * 2];
+                vv[2][1] = d[i + x * newX * rowBlock + newX * 2];
+                for (int yy = 0; yy < rowBlock; yy++) {
+                    for (int xx = 0; xx < rowBlock; xx++) {
+                        c[yy][xx] = vv[yy][0] * vv[xx][1];
+                        sums[yy][xx] += c[yy][xx];
+                    }
+                }
             }
             for (int yy = 0; yy < rowBlock; yy++) {
                 for (int xx = 0; xx < rowBlock; xx++) {
@@ -114,7 +125,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
                         int yCoord = y * rowBlock + yy;
                         if (xCoord < ny && yCoord < ny) {
                             result[xCoord + yCoord * ny] = total_sum;
-
                         }
 
                     }
