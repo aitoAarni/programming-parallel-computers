@@ -24,6 +24,7 @@ This is the function you need to implement. Quick reference:
 */
 void correlate(int ny, int nx, const float *data, float *result) {
     int newX = (nx + 3) / 4;    
+    constexpr int columnBlock = 4;
     std::vector<double4_t> d(ny * newX);
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
@@ -73,29 +74,58 @@ void correlate(int ny, int nx, const float *data, float *result) {
     }
     
     
-    double4_t sum;
-    double total_sum;
-    double4_t a;
-    double4_t b;
-    double4_t c;
+    double4_t sum0;
+    double4_t sum1;
+    double total_sum0;
+    double total_sum1;
+    double4_t a0;
+    double4_t b0;
+    double4_t c0;
 
+    double4_t a1;
+    double4_t b1;
+    double4_t c1;
+   // std::cout << "data: \n";
+   // for (int y = 0; y < ny; y++) {
+   //     for (int x = 0; x < newX; x++) {
+   //         for (int k = 0; k < columnBlock; k++) {
+   //             std::cout << d[x + y * newX][k] << " ";
+   //         }
+   //     }
+   //     std::cout << "\n";
+   // }
+   // std::cout << "nx: " << nx << "  ny: " << ny << "  newX: " << newX << "\n\n";
+    // #pragma omp parallel for
     for (int y = 0; y < ny; y++) {
-        #pragma omp parallel for
         for (int x = y; x < ny; x++) {
-            sum = d4zero;
-            total_sum = 0;
-            for (int i = 0; i < newX; i++) {
-                a = d[i + y * newX];
-                b = d[i + x * newX];
-                c = a * b;
-
-                sum += c;
+            sum0 = d4zero;
+            sum1 = d4zero;
+            total_sum0 = 0;
+            total_sum1 = 0;
+            int i = 0;
+            for (; i + 1 < newX; i += 2) {
+                a0 = d[i + y * newX];
+                b0 = d[i + x * newX];
+                c0 = a0 * b0;
+                sum0 += c0;
+                a1 = d[i + 1 + y * newX];
+                b1 = d[i + 1 + x * newX];
+                c1 = a1 * b1;
+                sum1 += c1;
                 
             }
-            for (int i = 0; i < 4; i++) {
-                total_sum += sum[i];
+            if (i < newX) {
+                a0 = d[i + y * newX];
+                b0 = d[i + x * newX];
+                sum0 += a0 * b0;
             }
-            result[x + y * ny] = total_sum;
+            for (int i = 0; i < columnBlock; i++) {
+                total_sum0 += sum0[i];
+            }
+            for (int i = 0; i < columnBlock; i++) {
+                total_sum1 += sum1[i];
+            }
+            result[x + y * ny] = total_sum0 + total_sum1;
         }
     }
 }
