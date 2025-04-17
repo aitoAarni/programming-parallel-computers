@@ -27,10 +27,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
     constexpr int rowBlock = 2;
     int newX = (nx + columnBlock - 1) / columnBlock;    
     int newY = (ny + rowBlock - 1) / rowBlock;
-    std::cout << "nx: " << nx << "\n";
-    std::cout << "ny: " << ny << "\n";
-    std::cout << "newY: " << newY << "\n";
-    std::cout << "newX: " << newX << "\n";
     std::vector<double4_t> d(newY * rowBlock * newX);
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x<newX; x++) {
@@ -108,13 +104,10 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
     
-    std::cout << "right answer\n";
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < ny; x++) {
-            std::cout << result[x + y * ny] << " ";
             result[x + y * ny] = 0;
         }
-        std::cout << "\n";
     }
     double4_t a0;
     double4_t b0;
@@ -123,26 +116,8 @@ void correlate(int ny, int nx, const float *data, float *result) {
     double4_t b1;
     
     double4_t sums[2][2];
-    std::cout << "\n";
-    std::cout << "ny" << ny << "\n";
-    std::cout << "table before \n";
     for (int y = 0; y < newY; y++) {
-        for (int x = 0; x < newX; x++) {
-            for (int ky = 0; ky < rowBlock; ky++) {
-                std::cout << "\n";
-                std::cout << "rowIndex: " << x + (y * 2 + ky) * newX << "| ";
-                for (int k = 0; k < columnBlock; k++) {
-                    
-                    std::cout << d[x + (y * 2 + ky) * newX][k] << " ";
-                }
-            }
-        }
-    }
-    std::cout << "\n\n";
-    for (int y = 0; y < newY; y++) {
-        std::cout << "y:  " << y << " \n";
         for (int x = y; x < newY; x++) {
-            std::cout << "x: " << x << "  real col: " << x * rowBlock << "\n";
             for (int i = 0; i < rowBlock; i++) {
                 for (int j = 0; j < rowBlock; j++) {
                     sums[i][j] = d4zero;
@@ -154,10 +129,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 b0 = d[i + x * newX * rowBlock];
                 a1 = d[i + y * newX * rowBlock + newX];
                 b1 = d[i + x * newX * rowBlock + newX];
-                std::cout << "index: " << i + y * newX * rowBlock << "  a0: " << a0[0] << " " << a0[1] << " " << a0[2] << " " << a0[3] << "\n";
-                std::cout << "index: " << i + x * newX * rowBlock << "  b0: " << b0[0] << " " << b0[1] << " " << b0[2] << " " << b0[3] << "\n";
-                std::cout << "index: " << i + y * newX * rowBlock + newX << "  a1: " << a1[0] << " " << a1[1] << " " << a1[2] << " " << a1[3] << "\n";
-                std::cout << "index: " << i + x * newX * rowBlock + newX << "  b1: " << b1[0] << " " << b1[1] << " " << b1[2] << " " << b1[3] << "\n";
                 c = a0 * b0;
                 sums[0][0] += c;
                 c = a0 * b1;
@@ -167,7 +138,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 c = a1 * b1;
                 sums[1][1] += c;
             }
-            std::cout << "\ninsert to result\n";
             for (int yy = 0; yy < rowBlock; yy++) {
                 for (int xx = 0; xx < rowBlock; xx++) {
                     total_sum = 0;
@@ -176,25 +146,14 @@ void correlate(int ny, int nx, const float *data, float *result) {
                         }
                         int xCoord = x * rowBlock + xx;
                         int yCoord = y * rowBlock + yy;
-                        std::cout << "x: " << xCoord << "  y: " << yCoord << "\n";
                         if (xCoord < ny && yCoord < ny) {
-                            std::cout << "From matrix x: " << xx << "  y: " << yy << "  result[index]: " << xCoord + yCoord * ny << "  sum: " << total_sum << "\n";
                             result[xCoord + yCoord * ny] = total_sum;
 
                         }
-                        std::cout << "\n";
 
                     }
                 }
-            std::cout << "\n";
             }
     }
     
-    std::cout << "new answer \n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < ny; x++) {
-            std::cout << result[x + y * ny] << " ";
-        }
-        std::cout << "\n";
-    }
 }
