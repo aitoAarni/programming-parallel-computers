@@ -80,35 +80,8 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
     
-    double4_t sum;
     double total_sum;
-    double4_t a;
-    double4_t b;
     double4_t c;
-    for (int y = 0; y < ny; y++) {
-        for (int x = y; x < ny; x++) {
-            sum = d4zero;
-            total_sum = 0;
-            for (int i = 0; i < newX; i++) {
-                a = d[i + y * newX];
-                b = d[i + x * newX];
-                c = a * b;
-
-                sum += c;
-                
-            }
-            for (int i = 0; i < 4; i++) {
-                total_sum += sum[i];
-            }
-            result[x + y * ny] = total_sum;
-        }
-    }
-    
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < ny; x++) {
-            result[x + y * ny] = 0;
-        }
-    }
     double4_t a0;
     double4_t b0;
     
