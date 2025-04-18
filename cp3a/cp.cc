@@ -24,11 +24,12 @@ This is the function you need to implement. Quick reference:
 */
 void correlate(int ny, int nx, const float *data, float *result) {
     constexpr int columnBlock = 4;
-    constexpr int rowBlock = 3;
+    constexpr int rowBlock = 4;
     const int newX = (nx + columnBlock - 1) / columnBlock;    
     const int newY = (ny + rowBlock - 1) / rowBlock;
     const int dataHeight = newY * rowBlock;
     std::vector<double4_t> d(newY * rowBlock * newX);
+    #pragma omp parallel for
     for (int y = 0; y<dataHeight; y++) {
         for (int x = 0; x<newX; x++) {
             for (int vecX = 0; vecX < columnBlock; vecX++) {
@@ -86,7 +87,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
 //        std::cout << "\n";
 //    }
     
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static, 1)
     for (int y = 0; y < newY; y++) {
         for (int x = y; x < newY; x++) {
             double total_sum;
@@ -109,6 +110,8 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 vv[1][1] = d[bBase + newX];
                 vv[2][0] = d[aBase + newX * 2];
                 vv[2][1] = d[bBase + newX * 2];
+                vv[3][0] = d[aBase + newX * 3];
+                vv[3][1] = d[bBase + newX * 3];
                 for (int yy = 0; yy < rowBlock; yy++) {
                     for (int xx = 0; xx < rowBlock; xx++) {
                         c[yy][xx] = vv[yy][0] * vv[xx][1];
