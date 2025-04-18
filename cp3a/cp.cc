@@ -24,7 +24,7 @@ This is the function you need to implement. Quick reference:
 */
 void correlate(int ny, int nx, const float *data, float *result) {
     constexpr int columnBlock = 4;
-    constexpr int rowBlock = 4;
+    constexpr int rowBlock = 5;
     const int newX = (nx + columnBlock - 1) / columnBlock;    
     const int newY = (ny + rowBlock - 1) / rowBlock;
     const int dataHeight = newY * rowBlock;
@@ -104,14 +104,10 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 int aBase = i + y * newX * rowBlock;
                 int bBase = i + x * newX * rowBlock;
                 // y * rowBlock * newX + i;
-                vv[0][0] = d[aBase];
-                vv[0][1] = d[bBase];
-                vv[1][0] = d[aBase + newX];
-                vv[1][1] = d[bBase + newX];
-                vv[2][0] = d[aBase + newX * 2];
-                vv[2][1] = d[bBase + newX * 2];
-                vv[3][0] = d[aBase + newX * 3];
-                vv[3][1] = d[bBase + newX * 3];
+                for (int o = 0; o < rowBlock; o++) {
+                    vv[o][0] = d[aBase + newX * o];
+                    vv[o][1] = d[bBase + newX * o];
+                }
                 for (int yy = 0; yy < rowBlock; yy++) {
                     for (int xx = 0; xx < rowBlock; xx++) {
                         c[yy][xx] = vv[yy][0] * vv[xx][1];
