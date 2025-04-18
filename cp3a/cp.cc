@@ -99,15 +99,16 @@ void correlate(int ny, int nx, const float *data, float *result) {
                     sums[i][j] = d4zero;
                 }
             }
-            
             for (int i = 0; i < newX; i++) {
+                int aBase = i + y * newX * rowBlock;
+                int bBase = i + x * newX * rowBlock;
                 // y * rowBlock * newX + i;
-                vv[0][0] = d[i + y * newX * rowBlock];
-                vv[0][1] = d[i + x * newX * rowBlock];
-                vv[1][0] = d[i + y * newX * rowBlock + newX];
-                vv[1][1] = d[i + x * newX * rowBlock + newX];
-                vv[2][0] = d[i + y * newX * rowBlock + newX * 2];
-                vv[2][1] = d[i + x * newX * rowBlock + newX * 2];
+                vv[0][0] = d[aBase];
+                vv[0][1] = d[bBase];
+                vv[1][0] = d[aBase + newX];
+                vv[1][1] = d[bBase + newX];
+                vv[2][0] = d[aBase + newX * 2];
+                vv[2][1] = d[bBase + newX * 2];
                 for (int yy = 0; yy < rowBlock; yy++) {
                     for (int xx = 0; xx < rowBlock; xx++) {
                         c[yy][xx] = vv[yy][0] * vv[xx][1];
