@@ -1,12 +1,8 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
-#include <chrono>
-double zeroNormalized[16000000];
-double squareNormalized[16000000];
 typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double))));
 constexpr double4_t d4zero = {0, 0, 0, 0};
-using namespace std::chrono;
 
 
 static inline double4_t sqrt_vector(double4_t v) {
@@ -26,12 +22,11 @@ This is the function you need to implement. Quick reference:
 */
 void correlate(int ny, int nx, const float *data, float *result) {
     constexpr int columnBlock = 4;
-    constexpr int rowBlock = 5;
+    constexpr int rowBlock = 8;
     const int newX = (nx + columnBlock - 1) / columnBlock;    
     const int newY = (ny + rowBlock - 1) / rowBlock;
     const int dataHeight = newY * rowBlock;
     std::vector<double4_t> d(newY * rowBlock * newX);
-    auto start1 = high_resolution_clock::now();
     #pragma omp parallel for
     for (int y = 0; y<dataHeight; y++) {
         for (int x = 0; x<newX; x++) {
@@ -80,17 +75,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
             if (4 * (newX - 1) + x >= nx) d[( newX - 1) + y * newX][x] = 0;
         }
     }
-    auto end1 = high_resolution_clock::now();
-//    std::cout << "ny: " << ny << "  nx: "<< nx << "  rowBlock: " << rowBlock << "  dataHeight: " << dataHeight << "  newY: " << newY << "\n\n";
-//    for (int y = 0; y < dataHeight; y++) {
-//        for (int x = 0; x < newX; x++) {
-//            for (int k = 0; k < columnBlock; k++) {
-//                std::cout << d[x + y * newX][k] << " ";
-//            }
-//        }
-//        std::cout << "\n";
-//    }
-    auto start2 = high_resolution_clock::now();
+
     #pragma omp parallel for schedule(dynamic, 1)
     for (int y = 0; y < newY; y++) {
         for (int x = y; x < newY; x++) {
@@ -107,7 +92,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
             for (int i = 0; i < newX; i++) {
                 int aBase = i + y * newX * rowBlock;
                 int bBase = i + x * newX * rowBlock;
-                // y * rowBlock * newX + i;
                 for (int o = 0; o < rowBlock; o++) {
                     vv[o][0] = d[aBase + newX * o];
                     vv[o][1] = d[bBase + newX * o];
@@ -139,7 +123,4 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 }
             }
     }
-    auto end2 = high_resolution_clock::now();    
-    std::cout << "first: " << duration_cast<milliseconds>(end1 - start1).count() << "  ";
-    std::cout << "seond: " << duration_cast<milliseconds>(end2 - start2).count() << "  ";
 }
