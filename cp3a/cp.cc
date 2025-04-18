@@ -27,6 +27,8 @@ void correlate(int ny, int nx, const float *data, float *result) {
     const int newY = (ny + rowBlock - 1) / rowBlock;
     const int dataHeight = newY * rowBlock;
     std::vector<double4_t> d(newY * rowBlock * newX);
+    //std::vector<double4_t> d(newY * rowBlock * newX);
+
     #pragma omp parallel for
     for (int y = 0; y<dataHeight; y++) {
         for (int x = 0; x<newX; x++) {
@@ -76,10 +78,16 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
 
-    #pragma omp parallel for schedule(dynamic, 1)
+    // for (int y = 0; y < dataHeight; y++) {
+    //     for (int x = 0; x < newX; x++) {
+
+    //     }
+    // }
+
+    #pragma omp parallel for schedule(dynamic, 2)
     for (int y = 0; y < newY; y++) {
         for (int x = y; x < newY; x++) {
-            double total_sum;
+            double total_sum[rowBlock][rowBlock];
             double4_t vv[rowBlock][2];
             double4_t sums[rowBlock][rowBlock];
             double4_t c[rowBlock][rowBlock];
@@ -87,6 +95,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
             for (int i = 0; i < rowBlock; i++) {
                 for (int j = 0; j < rowBlock; j++) {
                     sums[i][j] = d4zero;
+                    total_sum[i][j] = 0;
                 }
             }
             for (int i = 0; i < newX; i++) {
@@ -105,18 +114,13 @@ void correlate(int ny, int nx, const float *data, float *result) {
             }
             for (int yy = 0; yy < rowBlock; yy++) {
                 for (int xx = 0; xx < rowBlock; xx++) {
-                    total_sum = 0;
-                    // for (int i = 0; i < 4; i++) {
-                    //     total_sum += sums[yy][xx][i];
-                    //     }
-                        total_sum += sums[yy][xx][0];
-                        total_sum += sums[yy][xx][1];
-                        total_sum += sums[yy][xx][2];
-                        total_sum += sums[yy][xx][3];
+                     for (int i = 0; i < 4; i++) {
+                         total_sum[yy][xx] += sums[yy][xx][i];
+                         }
                         int xCoord = x * rowBlock + xx;
                         int yCoord = y * rowBlock + yy;
                         if (xCoord < ny && yCoord < ny) {
-                            result[xCoord + yCoord * ny] = total_sum;
+                            result[xCoord + yCoord * ny] = total_sum[yy][xx];
                         }
 
                     }
