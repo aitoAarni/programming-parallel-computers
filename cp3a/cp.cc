@@ -84,7 +84,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
     //     }
     // }
 
-    #pragma omp parallel for schedule(dynamic, 2)
+    #pragma omp parallel for schedule(dynamic, 1)
     for (int y = 0; y < newY; y++) {
         for (int x = y; x < newY; x++) {
             double total_sum[rowBlock][rowBlock];
@@ -107,8 +107,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
                 }
                 for (int yy = 0; yy < rowBlock; yy++) {
                     for (int xx = 0; xx < rowBlock; xx++) {
-                        c[yy][xx] = vv[yy][0] * vv[xx][1];
-                        sums[yy][xx] += c[yy][xx];
+                        sums[yy][xx] = sums[yy][xx] + vv[yy][0] * vv[xx][1];
                     }
                 }
             }
