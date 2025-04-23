@@ -41,26 +41,58 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
     
-    
-    #pragma omp parallel for
+    std::cout << "table after creation: \n";
     for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < newX; x++) {
+            for (int i = 0; i < columnBlock; i++) {
+                std::cout << d[x + y * newX][i] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\n\n"; 
+    // #pragma omp parallel for
+    for (int y = 0; y < ny; y++) {
+        std::cout << "y = " << y << "\n";
         float8_t sum = f8zero;
         for (int x = 0; x < newX; x++) {
-            sum = sum + d[x + y * newX];
+            sum += d[x + y * newX];
         }
         float sumDouble = 0;
         for (int i = 0; i < columnBlock; i++) {
             sumDouble += sum[i]; 
         }
-        float8_t mean = {(float)(sumDouble / nx),(float)(sumDouble / nx),(float)(sumDouble / nx),(float)(sumDouble / nx)};
+        std::cout << "row " << y << " sum = " << sumDouble << "\n";
+        std::cout << "\n Before normalization \n";
+        for (int x = 0; x < newX; x++) {
+            for (int i = 0; i < columnBlock; i++) {
+                std::cout << d[x + y * newX][i] << " ";
+            }
+        }
+        float8_t mean;
+        for (int i = 0; i < columnBlock; i++) {
+            mean[i] = (float)(sumDouble / nx);
+        }
         for (int x = 0; x < newX; x++) {
             d[x + y * newX] = d[x + y * newX] - mean;
         }
-        for (int x = 1; x < columnBlock; x++) {
-            if (columnBlock * (newX - 1) + x >= nx) {
-                d[(newX - 1) + y * newX][x] = 0;
-            }
-        }
+        //        std::cout << "\n normalized to zero now: \n";
+        //        for (int x = 0; x < newX; x++) {
+            //            for (int i = 0; i < columnBlock; i++) {
+                //                std::cout << d[x + ny * newX][i] << " ";
+                //            }
+                //        }
+                for (int x = 1; x < columnBlock; x++) {
+                    if (columnBlock * (newX - 1) + x >= nx) {
+                        d[(newX - 1) + y * newX][x] = 0;
+                    }
+                }
+                std::cout << "\n after normalizeation \n";
+                for (int x = 0; x < newX; x++) {
+                    for (int i = 0; i < columnBlock; i++) {
+                        std::cout << d[x + y * newX][i] << " ";
+                    }
+                }
         float8_t squareSums = f8zero;
         for (int x = 0; x < newX; x++) {
             float8_t a = d[x + y * newX] * d[x + y * newX];
@@ -70,16 +102,42 @@ void correlate(int ny, int nx, const float *data, float *result) {
         for (int i = 0; i < columnBlock; i++) {
             squareSum += squareSums[i];
         }
-        float8_t den = {squareSum, squareSum, squareSum, squareSum};
+        float8_t den;
+        for (int i = 0; i < columnBlock; i++) {
+            den[i] = squareSum;
+        }
         float8_t denominator = sqrt_vector(den);
+        std::cout << "\n Before normalization nro 2\n";
+        for (int x = 0; x < newX; x++) {
+            for (int i = 0; i < columnBlock; i++) {
+                std::cout << d[x + y * newX][i] << " ";
+            }
+        }
+        std::cout << "\n\n"; 
         for (int x = 0; x < newX; x++) {
             d[x + y * newX] = d[x + y * newX] / denominator;
         }
         for (int x = 1; x < columnBlock; x++) {
             if (columnBlock * (newX - 1) + x >= nx) d[( newX - 1) + y * newX][x] = 0;
         }
+        std::cout << "\n After normalization nro 2\n";
+        for (int x = 0; x < newX; x++) {
+            for (int i = 0; i < columnBlock; i++) {
+                std::cout << d[x + y * newX][i] << " ";
+            }
+        }
     }
+    std::cout << "\n\n"; 
 
+    std::cout << "table after everything \n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < newX; x++) {
+            for (int i = 0; i < columnBlock; i++) {
+                std::cout << d[x + y * newX][i] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
 
     #pragma omp parallel for schedule(dynamic, 1)
     for (int y = 0; y < newY; y++) {
