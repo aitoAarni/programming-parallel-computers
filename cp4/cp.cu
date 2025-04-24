@@ -33,7 +33,7 @@ __global__ void mykernel(int ny, int nx, const float *data, float *result) {
     float sum = 0;
     for (int x = 0; x < nx; x++) {
         sum += data[x + nx * j] * data[x+ nx * i];
-        printf("Thread (%d,%d),  1row: %d  2row: %d  datas = %f  %f\n", i, j, i, j, data[x + nx * j], data[x + nx * i]);
+        printf("col: %d  row: %d  value: %f\n", x, j, data[x + nx * j]);
     }
     result[i + j * ny] = (float)(sum);
     printf("\n\n");
