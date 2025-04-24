@@ -14,8 +14,8 @@ static inline void check(cudaError_t err, const char* context) {
 }
 
 #define CHECK(x) check(x, #x)
-double zeroNormalized[16000000];
-double squareNormalized[16000000];
+float zeroNormalized[16000000];
+float squareNormalized[16000000];
 /*
 This is the function you need to implement. Quick reference:
 - input rows: 0 <= y < ny
@@ -29,12 +29,14 @@ __global__ void mykernel(int ny, int nx, const float *data, float *result) {
     int i = threadIdx.x + blockIdx.x * blockDim.x;
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     if (j >= ny || i >= ny || j > i) return;
-
+    
     float sum = 0;
     for (int x = 0; x < nx; x++) {
         sum += data[x + nx * j] * data[x+ nx * i];
+        printf("Thread (%d,%d),  1row: %d  2row: %d  datas = %f  %f\n", i, j, i, j, data[x + nx * j], data[x + nx * i]);
     }
     result[i + j * ny] = (float)(sum);
+    printf("\n\n");
 }
 
 static inline int divup(int a, int b) {
@@ -46,10 +48,10 @@ static inline int roundup(int a, int b) {
 }
 
 void correlate(int ny, int nx, const float *data, float *result) {
-    std::vector<double> means(ny, 0.0);
-    std::vector<double> squareSums(ny, 0.0);
+    std::vector<float> means(ny, 0.0);
+    std::vector<float> squareSums(ny, 0.0);
     for (int y = 0; y < ny; y++) {
-        double sum = 0;
+        float sum = 0;
         for (int x = 0; x < nx; x++) {
             sum += data[x+y*nx];
         }
@@ -71,12 +73,20 @@ void correlate(int ny, int nx, const float *data, float *result) {
             squareNormalized[x + y * nx] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
         }
     }
-
+    std::cout << "right answer\n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            std::cout << squareNormalized[x + y * nx] << " ";
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\n\n";
     float* dGPU = NULL;
     CHECK(cudaMalloc((void**)&dGPU, nx * ny * sizeof(float)));
     float* rGPU = NULL;
     CHECK(cudaMalloc((void**)&rGPU, ny * ny * sizeof(float)));
     CHECK(cudaMemcpy(dGPU, squareNormalized, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
+
     dim3 dimBlock(16, 16);
     dim3 dimGrid(divup(ny, dimBlock.x), divup(ny, dimBlock.y));
     mykernel<<<dimGrid, dimBlock>>>(ny, nx, dGPU ,rGPU);
