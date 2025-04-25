@@ -61,41 +61,6 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
 
-    std::cout << "red blocks\n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << data[x * 3 + nx * y * 3] << " "; 
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\n\n";
-    std::cout << "green blocks\n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << data[x * 3 + 1 + nx * y * 3] << " "; 
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\n\n";
-
-    std::cout << "square sums for red: \n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << rec_sum[y][x][0] << " ";
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\n\n";
-
-    std::cout << "square sums for green: \n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << rec_sum[y][x][1] << " ";
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\n\n";
-
 
     ResultD res[22];
     double min_thread[22];
