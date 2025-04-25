@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <omp.h>
 struct Result {
     int y0;
     int x0;
@@ -9,12 +10,12 @@ struct Result {
     float inner[3];
 };
 
-double r_rec_sum[70][70];
-double g_rec_sum[70][70];
-double b_rec_sum[70][70];
-double r_sum_square[70][70];
-double g_sum_square[70][70];
-double b_sum_square[70][70];
+double r_rec_sum[400][400];
+double g_rec_sum[400][400];
+double b_rec_sum[400][400];
+double r_sum_square[400][400];
+double g_sum_square[400][400];
+double b_sum_square[400][400];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -71,7 +72,13 @@ Result segment(int ny, int nx, const float *data) {
             b_sum_square[y][x] = square_sum_b;
         }
     }
+    Result res[22];
+    double min_thread[22];
+    for (int i = 0; i < 22; i ++) {
+        min_thread[i] = 10e+50;
+    }
     double lowest_score = 10e+50;
+    #pragma omp parallel for
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
@@ -129,25 +136,34 @@ Result segment(int ny, int nx, const float *data) {
 
 
                     total_sse += r_rec_sse + r_background_sse + g_rec_sse + g_background_sse + b_rec_sse + b_background_sse;
-                
-                    if (total_sse <= lowest_score) {
-                        lowest_score = total_sse;
-                        result.y0 = y0;
-                        result.x0 = x0;
-                        result.y1 = y1 + 1;
-                        result.x1 = x1 + 1;
-                        result.inner[0] = r_sum / rec_size;
-                        result.outer[0] = r_background_sum / background_size;
-                        result.inner[1] = g_sum / rec_size;
-                        result.outer[1] = g_background_sum / background_size;
-                        result.inner[2] = b_sum / rec_size;
-                        result.outer[2] = b_background_sum / background_size;
+                    if (total_sse < lowest_score) {
+                            int thread = omp_get_thread_num();
+                            min_thread[thread] = total_sse;                                                        
+                            lowest_score = total_sse;
+                            res[thread].y0 = y0;
+                            res[thread].x0 = x0;
+                            res[thread].y1 = y1 + 1;
+                            res[thread].x1 = x1 + 1;
+                            res[thread].inner[0] = r_sum / rec_size;
+                            res[thread].outer[0] = r_background_sum / background_size;
+                            res[thread].inner[1] = g_sum / rec_size;
+                            res[thread].outer[1] = g_background_sum / background_size;
+                            res[thread].inner[2] = b_sum / rec_size;
+                            res[thread].outer[2] = b_background_sum / background_size;
                     }
                 }
             }
 
         }
     }
-
+    double minimum = 10e+50;
+    int minIndex = 0;
+    for (int i = 0; i < 22; i++) {
+        if (min_thread[i] < minimum) {
+            minimum = min_thread[i];
+            minIndex = i;
+            result = res[i];
+        }
+    }
     return result;
 }
