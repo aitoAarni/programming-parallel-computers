@@ -33,8 +33,9 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    constexpr int columnBlock = 1;
+    constexpr int columnBlock = 2;
     int newX = (nx + columnBlock - 1) / columnBlock;
+    printf("columnBlock: %d,  newX: %d\n\n", columnBlock, newX);
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
@@ -71,7 +72,9 @@ Result segment(int ny, int nx, const float *data) {
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
-                for (int x1 = x0 ; x1 < newX; x1 += columnBlock) {
+                std::cout << "\n\n new \n\n";
+                for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
+                    std::cout << "x1: " << x1 << "\n";
                     double4_t sum[columnBlock];
                     double4_t square_sum[columnBlock];
                     double total_sse[columnBlock];
@@ -132,6 +135,7 @@ Result segment(int ny, int nx, const float *data) {
                             res[thread].outer = background_sum[i] / background_size;
                         }
                     }
+
                 }
             }
 
