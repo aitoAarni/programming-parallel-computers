@@ -61,14 +61,13 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
 
-
     ResultD res[22];
     double min_thread[22];
     for (int i = 0; i < 22; i ++) {
         min_thread[i] = 10e+50;
     }
     double lowest_score = 10e+50;
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static, 1)
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
