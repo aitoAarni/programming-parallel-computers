@@ -35,6 +35,7 @@ __global__ void mykernel(int ny, int nx, const float *data, float *result) {
         sum += data[x + nx * j] * data[x+ nx * i];
         printf("col: %d  row: %d  value: %f\n", x, j, data[x + nx * j]);
     }
+
     result[i + j * ny] = (float)(sum);
     printf("\n\n");
 }
@@ -92,7 +93,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
     mykernel<<<dimGrid, dimBlock>>>(ny, nx, dGPU ,rGPU);
     CHECK(cudaGetLastError());
 
-    CHECK(cudaMemcpy(result, rGPU, ny * nx * sizeof(float), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(result, rGPU, ny * ny * sizeof(float), cudaMemcpyDeviceToHost));
     CHECK(cudaFree(dGPU));
     CHECK(cudaFree(rGPU));
 
