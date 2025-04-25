@@ -72,9 +72,7 @@ Result segment(int ny, int nx, const float *data) {
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
-                std::cout << "\n\n new \n\n";
                 for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
-                    std::cout << "x1: " << x1 << "\n";
                     double4_t sum[columnBlock];
                     double4_t square_sum[columnBlock];
                     double total_sse[columnBlock];
@@ -99,11 +97,13 @@ Result segment(int ny, int nx, const float *data) {
                             square_sum[i] += sum_square[y0-1][x0-1];   
                         }
                     }
-                    double4_t rec_size;
-                    double4_t background_size;
+                    double4_t rec_size[columnBlock] = {};
+                    double4_t background_size[columnBlock] = {};
                     for (int i = 0; i < columnBlock; i++) {
-                        rec_size[i] = (x1-x0+1) * (y1-y0 + 1);
-                        background_size[i] = ny * nx - rec_size[i];
+                        for (int j = 0; j < 3; j++) {
+                            rec_size[i][j] = (x1-x0+1+i) * (y1-y0 + 1);
+                            background_size[i][j] = ny * nx - rec_size[i][j];
+                        }
                     }
                     double4_t background_sum[columnBlock];
                     double4_t background_square_sum[columnBlock];
@@ -114,15 +114,15 @@ Result segment(int ny, int nx, const float *data) {
                         
                         background_sum[i] = rec_sum[ny-1][nx-1] - sum[i];
                         background_square_sum[i] = sum_square[ny-1][nx-1] - square_sum[i];
-                        rec_sse[i] = square_sum[i] - ((sum[i] * sum[i]) / (rec_size));
-                        background_sse[i] = background_square_sum[i] - ((background_sum[i] * background_sum[i]) / background_size);
+                        rec_sse[i] = square_sum[i] - ((sum[i] * sum[i]) / (rec_size[i]));
+                        background_sse[i] = background_square_sum[i] - ((background_sum[i] * background_sum[i]) / background_size[i]);
                         for (int j = 0; j < 3; j++) {
                             total_sse[i] += rec_sse[i][j];
                             total_sse[i] += background_sse[i][j];
                         }
                     }
                     for (int i = 0; i < columnBlock; i++) {
-
+                        if (x1 + i >= nx) continue;
                         if (total_sse[i] < lowest_score) {
                             int thread = omp_get_thread_num();
                             min_thread[thread] = total_sse[i];                                                        
@@ -131,8 +131,8 @@ Result segment(int ny, int nx, const float *data) {
                             res[thread].x0 = x0;
                             res[thread].y1 = y1 + 1;
                             res[thread].x1 = x1 + 1 + i;
-                            res[thread].inner = sum[i] / rec_size;
-                            res[thread].outer = background_sum[i] / background_size;
+                            res[thread].inner = sum[i] / rec_size[i];
+                            res[thread].outer = background_sum[i] / background_size[i];
                         }
                     }
 
@@ -142,11 +142,9 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
     double minimum = 10e+50;
-    int minIndex = 0;
     for (int i = 0; i < 22; i++) {
         if (min_thread[i] < minimum) {
             minimum = min_thread[i];
-            minIndex = i;
             result.y0 = res[i].y0;
             result.x0 = res[i].x0;
             result.y1 = res[i].y1;
