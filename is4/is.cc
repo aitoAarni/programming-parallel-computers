@@ -33,7 +33,7 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    constexpr int columnBlock = 5;
+    constexpr int columnBlock = 3;
     int newX = (nx + columnBlock - 1) / columnBlock;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
@@ -77,14 +77,16 @@ Result segment(int ny, int nx, const float *data) {
                     for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
                         double4_t sum[columnBlock];
                         double4_t square_sum[columnBlock];
+                        
+                        double4_t rec_size[columnBlock] = {};
+                        double4_t background_size[columnBlock] = {};
                         double total_sse[columnBlock];
                         for (int i = 0; i < columnBlock; i++) {
+                            if (x1 + i >= nx) continue;
                             total_sse[i] = 0;
                             sum[i] = rec_sum[y1][x1 + i];
                             square_sum[i] = sum_square[y1][x1 + i];
-                        }
                         
-                        for (int i = 0; i < columnBlock; i++) {
                             
                             if (y0 > 0) {
                                 sum[i] -= rec_sum[y0-1][x1 + i];
@@ -98,10 +100,7 @@ Result segment(int ny, int nx, const float *data) {
                                 sum[i] += rec_sum[y0-1][x0-1];
                                 square_sum[i] += sum_square[y0-1][x0-1];   
                             }
-                        }
-                        double4_t rec_size[columnBlock] = {};
-                        double4_t background_size[columnBlock] = {};
-                        for (int i = 0; i < columnBlock; i++) {
+                       
                             for (int j = 0; j < 3; j++) {
                                 rec_size[i][j] = (x1-x0+1+i) * (y1-y0 + 1);
                                 background_size[i][j] = ny * nx - rec_size[i][j];
@@ -113,6 +112,7 @@ Result segment(int ny, int nx, const float *data) {
                     double4_t background_sse[columnBlock];
                     for (int i = 0; i < columnBlock; i++) {
                         
+                        if (x1 + i >= nx) continue;
                         
                         background_sum[i] = rec_sum[ny-1][nx-1] - sum[i];
                         background_square_sum[i] = sum_square[ny-1][nx-1] - square_sum[i];
@@ -122,9 +122,6 @@ Result segment(int ny, int nx, const float *data) {
                             total_sse[i] += rec_sse[i][j];
                             total_sse[i] += background_sse[i][j];
                         }
-                    }
-                    for (int i = 0; i < columnBlock; i++) {
-                        if (x1 + i >= nx) continue;
                         if (total_sse[i] < lowest_score) {
                             int thread = omp_get_thread_num();
                             min_thread[thread] = total_sse[i];                                                        
