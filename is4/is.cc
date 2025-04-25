@@ -35,7 +35,6 @@ Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     constexpr int columnBlock = 2;
     int newX = (nx + columnBlock - 1) / columnBlock;
-    printf("columnBlock: %d,  newX: %d\n\n", columnBlock, newX);
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
@@ -67,8 +66,8 @@ Result segment(int ny, int nx, const float *data) {
     for (int i = 0; i < 22; i ++) {
         min_thread[i] = 10e+50;
     }
-    double lowest_score = 10e+50;
     #pragma omp parallel for schedule(static, 1)
+    double lowest_score = 10e+50;
     for (int y0 = 0; y0 < ny; y0++) {
         for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1++){
