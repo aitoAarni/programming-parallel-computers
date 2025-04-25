@@ -10,6 +10,9 @@ struct Result {
     float inner[3];
 };
 
+typedef double double4_t __attribute__ ((vector_size (8 * sizeof(double))));
+
+
 double r_rec_sum[400][400];
 double g_rec_sum[400][400];
 double b_rec_sum[400][400];
@@ -25,6 +28,8 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
+    int columnBlock = 4;
+    int newX = (nx + columnBlock - 1) / columnBlock;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;

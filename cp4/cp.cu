@@ -14,8 +14,8 @@ static inline void check(cudaError_t err, const char* context) {
 }
 
 #define CHECK(x) check(x, #x)
-float zeroNormalized[16000000];
-float squareNormalized[16000000];
+float zeroNormalized[160000000];
+float squareNormalized[160000000];
 /*
 This is the function you need to implement. Quick reference:
 - input rows: 0 <= y < ny
@@ -33,11 +33,9 @@ __global__ void mykernel(int ny, int nx, const float *data, float *result) {
     float sum = 0;
     for (int x = 0; x < nx; x++) {
         sum += data[x + nx * j] * data[x+ nx * i];
-        printf("col: %d  row: %d  value: %f\n", x, j, data[x + nx * j]);
     }
 
     result[i + j * ny] = (float)(sum);
-    printf("\n\n");
 }
 
 static inline int divup(int a, int b) {
@@ -74,18 +72,11 @@ void correlate(int ny, int nx, const float *data, float *result) {
             squareNormalized[x + y * nx] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
         }
     }
-    std::cout << "right answer\n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << squareNormalized[x + y * nx] << " ";
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\n\n";
     float* dGPU = NULL;
     CHECK(cudaMalloc((void**)&dGPU, nx * ny * sizeof(float)));
     float* rGPU = NULL;
     CHECK(cudaMalloc((void**)&rGPU, ny * ny * sizeof(float)));
+    CHECK(cudaMemset(rGPU, 0, ny * ny * sizeof(float)));
     CHECK(cudaMemcpy(dGPU, squareNormalized, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
 
     dim3 dimBlock(16, 16);
