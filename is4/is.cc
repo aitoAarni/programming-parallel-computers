@@ -10,7 +10,7 @@ struct Result {
     float inner[3];
 };
 
-typedef double double4_t __attribute__ ((vector_size (8 * sizeof(double))));
+typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double))));
 
 struct ResultD {
     int y0;
@@ -22,8 +22,8 @@ struct ResultD {
 };
 
 
-double4_t rec_sum[400][400];
-double4_t sum_square[400][400];
+double4_t rec_sum[400][404];
+double4_t sum_square[400][404];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -33,8 +33,9 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    constexpr int columnBlock = 3;
+    constexpr int columnBlock = 2;
     int newX = (nx + columnBlock - 1) / columnBlock;
+
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
@@ -66,11 +67,14 @@ Result segment(int ny, int nx, const float *data) {
     for (int i = 0; i < 22; i ++) {
         min_thread[i] = 10e+50;
     }
+    const double4_t total_sum = rec_sum[ny - 1][nx - 1];
+    const double4_t total_square_sum = sum_square[ny - 1][nx - 1];
+
     #pragma omp parallel
     {
 
         double lowest_score = 10e+50;
-        #pragma omp for schedule(static, 1)
+        #pragma omp for schedule(dynamic, 3)
         for (int y0 = 0; y0 < ny; y0++) {
             for (int x0 = 0; x0 < nx; x0++) {
                 for (int y1 = y0; y1 < ny; y1++){
@@ -114,8 +118,8 @@ Result segment(int ny, int nx, const float *data) {
                         
                         if (x1 + i >= nx) continue;
                         
-                        background_sum[i] = rec_sum[ny-1][nx-1] - sum[i];
-                        background_square_sum[i] = sum_square[ny-1][nx-1] - square_sum[i];
+                        background_sum[i] = total_sum - sum[i];
+                        background_square_sum[i] = total_square_sum - square_sum[i];
                         rec_sse[i] = square_sum[i] - ((sum[i] * sum[i]) / (rec_size[i]));
                         background_sse[i] = background_square_sum[i] - ((background_sum[i] * background_sum[i]) / background_size[i]);
                         for (int j = 0; j < 3; j++) {
