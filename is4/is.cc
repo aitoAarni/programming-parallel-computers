@@ -65,7 +65,7 @@ Result segment(int ny, int nx, const float *data) {
     ResultD res[22];
     double min_thread[22];
     for (int i = 0; i < 22; i ++) {
-        min_thread[i] = 10e+50;
+        min_thread[i] = 10e+5;
     }
     const double4_t total_sum = rec_sum[ny - 1][nx - 1];
     const double4_t total_square_sum = sum_square[ny - 1][nx - 1];
@@ -73,18 +73,23 @@ Result segment(int ny, int nx, const float *data) {
     #pragma omp parallel
     {
 
-        double lowest_score = 10e+50;
+                        double total_sse[columnBlock];
+                        double4_t sum[columnBlock];
+                        double4_t square_sum[columnBlock];
+                    double4_t background_sum[columnBlock];
+                    double4_t background_square_sum[columnBlock];
+                    double4_t rec_sse[columnBlock];
+                    double4_t background_sse[columnBlock];
+        int thread = omp_get_thread_num();
+        double lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 3)
         for (int y0 = 0; y0 < ny; y0++) {
             for (int x0 = 0; x0 < nx; x0++) {
                 for (int y1 = y0; y1 < ny; y1++){
                     for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
-                        double4_t sum[columnBlock];
-                        double4_t square_sum[columnBlock];
                         
                         double4_t rec_size[columnBlock] = {};
                         double4_t background_size[columnBlock] = {};
-                        double total_sse[columnBlock];
                         for (int i = 0; i < columnBlock; i++) {
                             if (x1 + i >= nx) continue;
                             total_sse[i] = 0;
@@ -110,13 +115,9 @@ Result segment(int ny, int nx, const float *data) {
                                 background_size[i][j] = ny * nx - rec_size[i][j];
                         }
                     }
-                    double4_t background_sum[columnBlock];
-                    double4_t background_square_sum[columnBlock];
-                    double4_t rec_sse[columnBlock];
-                    double4_t background_sse[columnBlock];
                     for (int i = 0; i < columnBlock; i++) {
                         
-                        if (x1 + i >= nx) continue;
+                        if (x1 + i >= nx) break;
                         
                         background_sum[i] = total_sum - sum[i];
                         background_square_sum[i] = total_square_sum - square_sum[i];
@@ -127,7 +128,6 @@ Result segment(int ny, int nx, const float *data) {
                             total_sse[i] += background_sse[i][j];
                         }
                         if (total_sse[i] < lowest_score) {
-                            int thread = omp_get_thread_num();
                             min_thread[thread] = total_sse[i];                                                        
                             lowest_score = total_sse[i];
                             res[thread].y0 = y0;
