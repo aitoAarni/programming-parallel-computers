@@ -82,10 +82,10 @@ Result segment(int ny, int nx, const float *data) {
                     double4_t background_sse[columnBlock];
         int thread = omp_get_thread_num();
         double lowest_score = 10e+5;
-        #pragma omp for schedule(dynamic, 3)
+        #pragma omp for schedule(dynamic, 2)
         for (int y0 = 0; y0 < ny; y0++) {
-            for (int x0 = 0; x0 < nx; x0++) {
-                for (int y1 = y0; y1 < ny; y1++){
+            for (int y1 = y0; y1 < ny; y1++){
+                for (int x0 = 0; x0 < nx; x0++) {
                     for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
                         
                         double4_t rec_size[columnBlock] = {};
