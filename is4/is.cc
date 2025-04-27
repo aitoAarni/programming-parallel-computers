@@ -10,7 +10,7 @@ struct Result {
     float inner[3];
 };
 
-typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double))));
+typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double)), aligned(32)));
 
 struct ResultD {
     int y0;
@@ -21,9 +21,14 @@ struct ResultD {
     double4_t inner;
 };
 
+struct ThreadResult {
+    double error;
+    int y0, x0, y1, x1;
+    double4_t inner, outer;
+};
 
-double4_t rec_sum[400][404];
-double4_t sum_square[400][404];
+alignas(64) double4_t rec_sum[400][404];
+alignas(64) double4_t sum_square[400][404];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -63,10 +68,9 @@ Result segment(int ny, int nx, const float *data) {
         }
     }
 
-    ResultD res[22];
-    double min_thread[22];
+    ThreadResult res[22];
     for (int i = 0; i < 22; i ++) {
-        min_thread[i] = 10e+5;
+        res[i].error = 10e+5;
     }
     const double4_t total_sum = rec_sum[ny - 1][nx - 1];
     const double4_t total_square_sum = sum_square[ny - 1][nx - 1];
@@ -134,8 +138,8 @@ Result segment(int ny, int nx, const float *data) {
                             total_sse[i][j] += rec_sse[i][j][z] + background_sse[i][j][z];
                         }
                         if (total_sse[i][j] < lowest_score) {
-                            min_thread[thread] = total_sse[i][j];                                                        
                             lowest_score = total_sse[i][j];
+                            res[thread].error = total_sse[i][j];
                             res[thread].y0 = y0;
                             res[thread].x0 = x0;
                             res[thread].y1 = y1 + 1 + i;
@@ -153,8 +157,8 @@ Result segment(int ny, int nx, const float *data) {
     }
     double minimum = 10e+5;
     for (int i = 0; i < 22; i++) {
-        if (min_thread[i] < minimum) {
-            minimum = min_thread[i];
+        if (res[i].error < minimum) {
+            minimum = res[i].error;
             result.y0 = res[i].y0;
             result.x0 = res[i].x0;
             result.y1 = res[i].y1;
