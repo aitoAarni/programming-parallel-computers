@@ -11,7 +11,7 @@ struct Result {
 };
 
 typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double)), aligned(32)));
-
+double4_t d4zero = {0, 0, 0, 0};
 struct ResultD {
     int y0;
     int x0;
@@ -38,9 +38,8 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    constexpr int columnBlock = 2;
-    constexpr int rowBlock = 2;
-    int newX = (nx + columnBlock - 1) / columnBlock;
+    constexpr int columnBlock = 1;
+    constexpr int rowBlock = 1;
 
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
@@ -85,19 +84,30 @@ Result segment(int ny, int nx, const float *data) {
         double4_t background_square_sum[rowBlock][columnBlock];
         double4_t rec_sse[rowBlock][columnBlock];
         double4_t background_sse[rowBlock][columnBlock];
+        for (int i = 0; i < rowBlock; ++i) {
+    for (int j = 0; j < columnBlock; ++j) {
+        total_sse[i][j] = 0.0;
+        sum[i][j] = d4zero;
+        square_sum[i][j] = d4zero;
+        background_sum[i][j] = d4zero;
+        background_square_sum[i][j] = d4zero;
+        rec_sse[i][j] = d4zero;
+        background_sse[i][j] = d4zero;
+    }
+}
         int thread = omp_get_thread_num();
         double lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 1)
-        for (int y0 = 0; y0 < ny; y0++) {
-            for (int y1 = y0; y1 < ny; y1 += rowBlock){
-            for (int x0 = 0; x0 < nx; x0++) {
-                    for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
-                        
+        for (int height = 0; height < ny; height++) {
+            for (int width = 0; width < nx; width++) {
+                    for (int y0 = 0; y0 < ny - height; y0 += rowBlock){
+                        for (int x0 = 0 ; x0 < nx - width; x0 += columnBlock) {
+                        int y1 = y0 + height;
+                        int x1 = x0 + width;
                         double4_t rec_size[rowBlock][columnBlock] = {};
                         double4_t background_size[rowBlock][columnBlock] = {};
                         for (int i = 0; i < rowBlock; i++) {
                             for (int j = 0; j < columnBlock; j++) {
-
                                 if (y1 + i >= ny || x1 + j >= nx) break;
                                 total_sse[i][j] = 0;
                                 sum[i][j] = rec_sum[y1 + i][x1 + j];
@@ -125,9 +135,6 @@ Result segment(int ny, int nx, const float *data) {
                     }
                     for (int i = 0; i < rowBlock; i++) {
                         for (int j = 0; j < columnBlock; j++) {
-
-                        
-                        
                         if (y1 + i >= ny || x1 + j >= nx) break;
                         
                         background_sum[i][j] = total_sum - sum[i][j];
