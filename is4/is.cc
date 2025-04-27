@@ -83,10 +83,10 @@ Result segment(int ny, int nx, const float *data) {
         double4_t background_sse[rowBlock][columnBlock];
         int thread = omp_get_thread_num();
         double lowest_score = 10e+5;
-        #pragma omp for schedule(dynamic, 2)
+        #pragma omp for schedule(dynamic, 1)
         for (int y0 = 0; y0 < ny; y0++) {
-            for (int x0 = 0; x0 < nx; x0++) {
             for (int y1 = y0; y1 < ny; y1 += rowBlock){
+            for (int x0 = 0; x0 < nx; x0++) {
                     for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
                         
                         double4_t rec_size[rowBlock][columnBlock] = {};
@@ -131,8 +131,7 @@ Result segment(int ny, int nx, const float *data) {
                         rec_sse[i][j] = square_sum[i][j] - ((sum[i][j] * sum[i][j]) / (rec_size[i][j]));
                         background_sse[i][j] = background_square_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size[i][j]);
                         for (int z = 0; z < 3; z++) {
-                            total_sse[i][j] += rec_sse[i][j][z];
-                            total_sse[i][j] += background_sse[i][j][z];
+                            total_sse[i][j] += rec_sse[i][j][z] + background_sse[i][j][z];
                         }
                         if (total_sse[i][j] < lowest_score) {
                             min_thread[thread] = total_sse[i][j];                                                        
@@ -152,7 +151,7 @@ Result segment(int ny, int nx, const float *data) {
         }
         }
     }
-    double minimum = 10e+50;
+    double minimum = 10e+5;
     for (int i = 0; i < 22; i++) {
         if (min_thread[i] < minimum) {
             minimum = min_thread[i];
