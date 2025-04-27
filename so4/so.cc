@@ -1,74 +1,67 @@
 #include <algorithm>
 #include <iostream>
+#include <vector>
+#include <omp.h>
+
 typedef unsigned long long data_t;
 
-data_t tempData[100000000];
-
-static void merge(int start, int mid, int end, data_t *data) {
-    int leftP = 0;
-    int rightP = 0;
+static void merge(int start, int mid, int end, data_t* data, data_t* temp) {
     int leftEnd = mid - start + 1;
     int rightEnd = end - mid;
+
     for (int i = 0; i < leftEnd; i++) {
-        tempData[i + start] = data[i + start];
+        temp[start + i] = data[start + i];
     }
     for (int i = 0; i < rightEnd; i++) {
-        tempData[i + mid + 1] = data[i + mid + 1];
+        temp[mid + 1 + i] = data[mid + 1 + i];
     }
-    int i = start;
-    for (; i <= end; i++) {
-        if (tempData[leftP + start] < tempData[rightP + mid + 1]){ 
-            data[i] = tempData[leftP + start];
-            leftP++;
-            if (leftP == leftEnd) break;
+
+    int leftP = start;
+    int rightP = mid + 1;
+    int idx = start;
+
+    while (leftP <= mid && rightP <= end) {
+        if (temp[leftP] <= temp[rightP]) {
+            data[idx++] = temp[leftP++];
         } else {
-            data[i] = tempData[rightP + mid + 1];
-            rightP++;
-            if (rightP == rightEnd) break;
+            data[idx++] = temp[rightP++];
         }
     }
 
-    for (int j = leftP; j < leftEnd; j++) {
-        i++;
-        data[i] = tempData[j + start];
+    while (leftP <= mid) {
+        data[idx++] = temp[leftP++];
     }
-    
-    for (int j = rightP; j < rightEnd; j++) {
-        i++;
-        data[i] = tempData[j + mid + 1];
+    while (rightP <= end) {
+        data[idx++] = temp[rightP++];
     }
-    
 }
- static void mergeSort(int start, int end, data_t *data) {
-    if (start == end) return;
 
-    int mid =(end + start) / 2;
+static void mergeSort(int start, int end, data_t* data, data_t* temp) {
+    if (start >= end) return;
+
+    int mid = (start + end) / 2;
     if (end - start < 100000) {
-        mergeSort(start, mid, data);
-        mergeSort(mid + 1, end, data);
-        merge(start, mid, end, data);
+        std::sort(data + start, data + end + 1);
     } else {
+        #pragma omp task shared(data, temp)
+        mergeSort(start, mid, data, temp);
 
-            #pragma omp task
-            mergeSort(start, mid, data);
-            #pragma omp task
-            mergeSort(mid + 1, end, data);
-            #pragma omp taskwait
-            merge(start, mid, end, data);
+        #pragma omp task shared(data, temp)
+        mergeSort(mid + 1, end, data, temp);
+
+        #pragma omp taskwait
+        merge(start, mid, end, data, temp);
     }
 }
 
-void psort(int n, data_t *data) {
-    // FIXME: Implement a more efficient parallel sorting algorithm for the CPU,
-    // using the basic idea of merge sort.
-    // for (int i = 0; i < n; i++) {
-    //     std::cout << data[i] << " ";
-    // }
+void psort(int n, data_t* data) {
     if (n == 0) return;
+
+    std::vector<data_t> temp(n);
+
     #pragma omp parallel
     #pragma omp single
     {
-        mergeSort(0, n - 1, data);
+        mergeSort(0, n - 1, data, temp.data());
     }
-    
 }
