@@ -4,7 +4,7 @@ typedef unsigned long long data_t;
 
 data_t tempData[100000000];
 
- void merge(int start, int mid, int end, data_t *data) {
+static void merge(int start, int mid, int end, data_t *data) {
     int leftP = 0;
     int rightP = 0;
     int leftEnd = mid - start + 1;
@@ -39,11 +39,11 @@ data_t tempData[100000000];
     }
     
 }
- void mergeSort(int start, int end, data_t *data) {
+ static void mergeSort(int start, int end, data_t *data) {
     if (start == end) return;
 
     int mid =(end + start) / 2;
-    if (end - start < 10000) {
+    if (end - start < 100000) {
         mergeSort(start, mid, data);
         mergeSort(mid + 1, end, data);
         merge(start, mid, end, data);
