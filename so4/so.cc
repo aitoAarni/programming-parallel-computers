@@ -27,19 +27,18 @@ void merge(int start, int mid, int end, data_t *data) {
             if (rightP == rightEnd) break;
         }
     }
-    i++;
 
     for (int j = leftP; j < leftEnd; j++) {
-        data[i] = tempData[j + start];
         i++;
+        data[i] = tempData[j + start];
     }
     
     for (int j = rightP; j < rightEnd; j++) {
-        data[i] = tempData[j + mid + 1];
         i++;
+        data[i] = tempData[j + mid + 1];
     }
+    
 }
-
 void mergeSort(int start, int end, data_t *data) {
     if (start == end) return;
 
@@ -53,15 +52,10 @@ void mergeSort(int start, int end, data_t *data) {
 void psort(int n, data_t *data) {
     // FIXME: Implement a more efficient parallel sorting algorithm for the CPU,
     // using the basic idea of merge sort.
-    std::sort(data, data + n);
-}
+    // for (int i = 0; i < n; i++) {
+    //     std::cout << data[i] << " ";
+    // }
+    if (n == 0) return;
+    mergeSort(0, n - 1, data);
 
-int main() {
-    data_t d[13] = {1, 4, 2, 3, 4, 5, 1, 3, 5, 6, 1, 642, 6};
-    mergeSort(0, 12, d);
-
-    for (int i = 0; i < 13; i++) {
-        std::cout << d[i] << " ";
-    }
-    return 0;
 }
