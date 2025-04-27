@@ -76,6 +76,7 @@ Result segment(int ny, int nx, const float *data) {
 
     #pragma omp parallel
     {
+        const bool big = ny * nx > 140000;
 
         double total_sse[rowBlock][columnBlock];
         double4_t sum[rowBlock][columnBlock];
@@ -104,6 +105,7 @@ Result segment(int ny, int nx, const float *data) {
                     const double4_t rec_size = {tmp, tmp, tmp, tmp};
                     tmp = ny * nx - tmp;
                     const double4_t background_size = {tmp, tmp, tmp, tmp};
+                    if (big && (tmp < 401 || (height + 1) * (width + 1) < 401)) continue;
                     for (int y0 = 0; y0 < ny - height; y0 += rowBlock){
                         for (int x0 = 0 ; x0 < nx - width; x0 += columnBlock) {
                             int y1 = y0 + height;
