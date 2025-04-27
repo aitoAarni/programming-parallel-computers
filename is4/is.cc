@@ -27,8 +27,8 @@ struct ThreadResult {
     double4_t inner, outer;
 };
 
-alignas(64) double4_t rec_sum[400][404];
-alignas(64) double4_t sum_square[400][404];
+alignas(64) double4_t rec_sum[400][400];
+alignas(64) double4_t sum_square[400][400];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -38,7 +38,7 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    constexpr int columnBlock = 1;
+    constexpr int columnBlock = 3;
     constexpr int rowBlock = 1;
 
     for (int y = 0; y<ny; y++) {
@@ -97,40 +97,39 @@ Result segment(int ny, int nx, const float *data) {
 }
         int thread = omp_get_thread_num();
         double lowest_score = 10e+5;
-        #pragma omp for schedule(dynamic, 1)
+        #pragma omp for schedule(dynamic, 2)
         for (int height = 0; height < ny; height++) {
             for (int width = 0; width < nx; width++) {
+                    double tmp =  (height + 1) * (width + 1);
+                    const double4_t rec_size = {tmp, tmp, tmp, tmp};
+                    tmp = ny * nx - tmp;
+                    const double4_t background_size = {tmp, tmp, tmp, tmp};
                     for (int y0 = 0; y0 < ny - height; y0 += rowBlock){
                         for (int x0 = 0 ; x0 < nx - width; x0 += columnBlock) {
-                        int y1 = y0 + height;
-                        int x1 = x0 + width;
-                        double4_t rec_size[rowBlock][columnBlock] = {};
-                        double4_t background_size[rowBlock][columnBlock] = {};
-                        for (int i = 0; i < rowBlock; i++) {
-                            for (int j = 0; j < columnBlock; j++) {
+                            int y1 = y0 + height;
+                            int x1 = x0 + width;
+                            for (int i = 0; i < rowBlock; i++) {
+                                for (int j = 0; j < columnBlock; j++) {
+                                
                                 if (y1 + i >= ny || x1 + j >= nx) break;
                                 total_sse[i][j] = 0;
                                 sum[i][j] = rec_sum[y1 + i][x1 + j];
                                 square_sum[i][j] = sum_square[y1 + i][x1 + j];
                                 
                                 
-                                if (y0 > 0) {
-                                sum[i][j] -= rec_sum[y0-1][x1 + j];
-                                square_sum[i][j] -= sum_square[y0-1][x1 + j];   
+                                if (y0 + i > 0) {
+                                sum[i][j] -= rec_sum[y0-1 + i][x1 + j];
+                                square_sum[i][j] -= sum_square[y0-1 + i][x1 + j];   
                             }
-                            if (x0 > 0) {
-                                sum[i][j] -= rec_sum[y1 + i][x0-1];
-                                square_sum[i][j] -= sum_square[y1 + i][x0-1];   
+                            if (x0 + j > 0) {
+                                sum[i][j] -= rec_sum[y1 + i][x0-1 + j];
+                                square_sum[i][j] -= sum_square[y1 + i][x0-1 + j];   
                             }
-                            if (y0>0 && x0>0) {
-                                sum[i][j] += rec_sum[y0-1][x0-1];
-                                square_sum[i][j] += sum_square[y0-1][x0-1];   
+                            if (y0 + i>0 && x0 + j>0) {
+                                sum[i][j] += rec_sum[y0-1 + i][x0-1 + j];
+                                square_sum[i][j] += sum_square[y0-1 + i][x0-1 + j];   
                             }
                        
-                            for (int z = 0; z < 3; z++) {
-                                rec_size[i][j][z] = (x1-x0+1 + j) * (y1-y0 + 1 + i);
-                                background_size[i][j][z] = ny * nx - rec_size[i][j][z];
-                            }
                         }
                     }
                     for (int i = 0; i < rowBlock; i++) {
@@ -139,20 +138,20 @@ Result segment(int ny, int nx, const float *data) {
                         
                         background_sum[i][j] = total_sum - sum[i][j];
                         background_square_sum[i][j] = total_square_sum - square_sum[i][j];
-                        rec_sse[i][j] = square_sum[i][j] - ((sum[i][j] * sum[i][j]) / (rec_size[i][j]));
-                        background_sse[i][j] = background_square_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size[i][j]);
+                        rec_sse[i][j] = square_sum[i][j] - ((sum[i][j] * sum[i][j]) / rec_size);
+                        background_sse[i][j] = background_square_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size);
                         for (int z = 0; z < 3; z++) {
                             total_sse[i][j] += rec_sse[i][j][z] + background_sse[i][j][z];
                         }
                         if (total_sse[i][j] < lowest_score) {
                             lowest_score = total_sse[i][j];
                             res[thread].error = total_sse[i][j];
-                            res[thread].y0 = y0;
-                            res[thread].x0 = x0;
+                            res[thread].y0 = y0 + i;
+                            res[thread].x0 = x0 + j;
                             res[thread].y1 = y1 + 1 + i;
                             res[thread].x1 = x1 + 1 + j;
-                            res[thread].inner = sum[i][j] / rec_size[i][j];
-                            res[thread].outer = background_sum[i][j] / background_size[i][j];
+                            res[thread].inner = sum[i][j] / rec_size;
+                            res[thread].outer = background_sum[i][j] / background_size;
                         }
                     }
              }       
