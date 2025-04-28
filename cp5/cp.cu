@@ -34,7 +34,7 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *tranpos
     float sum = 0;
     for (int x = 0; x < nx; x++) {
         float a = data[x + nx * j];
-        float b = tranpose[x * nx + i];
+        float b = tranpose[x * ny + i];
         sum += a * b;
     }
 
@@ -75,22 +75,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
             squareNormalized[x + y * nx] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
             transpose[x * ny + y] = squareNormalized[x + y * nx];
         }
-    }
-
-    std::cout << "right answer\n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << squareNormalized[x + nx * y] << " ";
-        }
-        std::cout << "\n";
-    }
-
-    std::cout << "\n\n¨transpose\n";
-    for (int y = 0; y < nx; y++) {
-        for (int x = 0; x < ny; x++) {
-            std::cout << transpose[x + ny * y] << " ";
-        }
-        std::cout << "\n";
     }
 
     float* dGPU = NULL;
