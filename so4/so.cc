@@ -40,7 +40,7 @@ static void mergeSort(int start, int end, data_t* data, data_t* temp) {
     if (start >= end) return;
 
     int mid = (start + end) / 2;
-    if (end - start < 100000) {
+    if (end - start < 10000) {
         std::sort(data + start, data + end + 1);
     } else {
         #pragma omp task shared(data, temp)
