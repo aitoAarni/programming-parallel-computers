@@ -27,15 +27,15 @@ This is the function you need to implement. Quick reference:
 */
 
 __global__ void mykernel(int ny, int nx, const float *data, const float *tranpose, float *result) {
-    int i = threadIdx.x + blockIdx.x * blockDim.x;
-    int j = threadIdx.y + blockIdx.y * blockDim.y;
-    if (j >= ny || i >= ny || j > i) return;
-    
-    float vv[8][8];
+    int bx = blockIdx.x * blockDim.x;
+    int by = blockIdx.y * blockDim.y;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    if (bx + tx >= ny || by + ty >= ny || by + ty > bx + tx) return;
     float dv[8];
     float tv[8];
-    float sum = 0;
-    for (int x = 0; x < 8; x++) {
+    float vv[8][8];
+    for (int x = 0; x < nx; ) {
         float a = data[x * 8 + j];
         float b = tranpose[x * ny + i];
         dv[x] = a;
