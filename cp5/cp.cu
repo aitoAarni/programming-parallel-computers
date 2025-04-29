@@ -31,11 +31,21 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *tranpos
     int j = threadIdx.y + blockIdx.y * blockDim.y;
     if (j >= ny || i >= ny || j > i) return;
     
+    float vv[8][8];
+    float dv[8];
+    float tv[8];
     float sum = 0;
-    for (int x = 0; x < nx; x++) {
-        float a = data[x + nx * j];
+    for (int x = 0; x < 8; x++) {
+        float a = data[x * 8 + j];
         float b = tranpose[x * ny + i];
-        sum += a * b;
+        dv[x] = a;
+        tv[x] = b;
+    }
+
+    for (int x = 0; x < 8; x++) {
+        for (int y = 0; y < 8; y++) {
+            vv[y][x] = dv[x] * tv[y];
+        }
     }
 
     result[i + j * ny] = (float)(sum);
@@ -87,8 +97,8 @@ void correlate(int ny, int nx, const float *data, float *result) {
     CHECK(cudaMemcpy(dGPU, squareNormalized, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
     CHECK(cudaMemcpy(tGPU, transpose, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
 
-    dim3 dimBlock(16, 16);
-    dim3 dimGrid(divup(ny, dimBlock.x), divup(ny, dimBlock.y));
+    dim3 dimBlock(8, 8);
+    dim3 dimGrid(divup(ny, 64), divup(ny, 64));
     mykernel<<<dimGrid, dimBlock>>>(ny, nx, dGPU, tGPU ,rGPU);
     CHECK(cudaGetLastError());
 
