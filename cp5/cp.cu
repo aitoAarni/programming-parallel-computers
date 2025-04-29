@@ -32,14 +32,18 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *tranpos
     int tx = threadIdx.x;
     int ty = threadIdx.y;
     if (bx + tx >= ny || by + ty >= ny || by + ty > bx + tx) return;
-    float dv[8];
-    float tv[8];
+    float v1[8];
+    float v2[8];
     float vv[8][8];
-    for (int x = 0; x < nx; ) {
-        float a = data[x * 8 + j];
-        float b = tranpose[x * ny + i];
-        dv[x] = a;
-        tv[x] = b;
+    for (int x = 0; x < nx; x++) {
+        for (int i = 0; i <= 8; i++) {
+            int base = bx * blockDim.x + by * blockDim.y * ny + tx + 8 * ny * ty;
+            int v1Col = bx + tx + i * 8;
+            int v2Col 
+            v1[i] = tranpose[v1Col + x * ny];
+            v2[i] = transpose[i + x * ny];
+
+        }
     }
 
     for (int x = 0; x < 8; x++) {
