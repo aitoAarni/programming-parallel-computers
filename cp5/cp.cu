@@ -42,7 +42,7 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
         }
     }
     for (int k = 0; k < nx; k++) {
-        for (int i = 0; i <= 8; i++) {
+        for (int i = 0; i < 8; i++) {
             int v1Col = by + ty + i * 8;
             int v2Col = bx + tx + i * 8;
             if (v1Col >= ny || v2Col >= ny) break;
