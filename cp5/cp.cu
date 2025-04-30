@@ -35,24 +35,35 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *tranpos
     float v1[8];
     float v2[8];
     float vv[8][8];
-    for (int x = 0; x < nx; x++) {
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            vv[y][x] = 0;
+        }
+    }
+    for (int k = 0; k < nx; k++) {
         for (int i = 0; i <= 8; i++) {
-            int base = bx * blockDim.x + by * blockDim.y * ny + tx + 8 * ny * ty;
-            int v1Col = bx + tx + i * 8;
-            int v2Col 
-            v1[i] = tranpose[v1Col + x * ny];
-            v2[i] = transpose[i + x * ny];
+            int v1Col = by + ty + i * 8;
+            int v2Col = bx + tx + i * 8;
+
+            v1[i] = tranpose[v1Col + k * ny];
+            v2[i] = transpose[v2Col + k * ny];
 
         }
-    }
-
-    for (int x = 0; x < 8; x++) {
         for (int y = 0; y < 8; y++) {
-            vv[y][x] = dv[x] * tv[y];
+            for (int x = 0; x < 8; x++) {
+                vv[y][x] += v1[y] * v2[x];
+            }
         }
     }
-
-    result[i + j * ny] = (float)(sum);
+    for (int y = 0; y < 8; y++) {
+        int j = by + ty + y * 8;
+        if (j >= ny) return;
+        for (int x = 0; x < 0; x++) {
+            int i = bx + tx + x * 8; 
+            if (i >= ny) break;
+            result[j * ny + i] = vv[y][x];
+        }
+    }
 }
 
 static inline int divup(int a, int b) {
