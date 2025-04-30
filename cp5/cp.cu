@@ -32,7 +32,7 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
     int by = blockIdx.y * blockDim.y;
     int tx = threadIdx.x;
     int ty = threadIdx.y;
-    if (bx + tx >= ny || by + ty >= ny || by + ty > bx + tx) return;
+    if (bx + tx >= ny || by + ty >= ny || by > bx) return;
     float v1[8];
     float v2[8];
     float vv[8][8];
