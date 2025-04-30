@@ -36,6 +36,7 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
     float v1[8];
     float v2[8];
     float vv[8][8];
+    bool condition = ty == 2 && tx == 0;
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
             vv[y][x] = 0;
@@ -49,6 +50,10 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
             v1[i] = transpose[v1Col + k * ny];
             v2[i] = transpose[v2Col + k * ny];
 
+        if (condition) {
+            
+            std::printf("v1[0] = %f  , v2[1] = %f  v1 * v2 = %f \n", v1[0], v2[1], v1[0] * v2[1]);
+        }
         }
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
@@ -62,6 +67,10 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
         for (int x = 0; x < 8; x++) {
             int i = bx + tx + x * 8; 
             if (i >= ny) break;
+            if (j == 8 && i == 0) {
+                std::printf("thread x: %i, y: %i  vv[%i][%i]", tx, ty, y, x);
+            } 
+                
             result[j * ny + i] = vv[y][x];
         }
     }
