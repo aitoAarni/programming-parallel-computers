@@ -44,7 +44,7 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *tranpos
         for (int i = 0; i <= 8; i++) {
             int v1Col = by + ty + i * 8;
             int v2Col = bx + tx + i * 8;
-
+            if (v1Col >= ny || v2Col >= ny) break;
             v1[i] = tranpose[v1Col + k * ny];
             v2[i] = transpose[v2Col + k * ny];
 
