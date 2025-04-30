@@ -27,7 +27,7 @@ This is the function you need to implement. Quick reference:
 - only parts with 0 <= j <= i < ny need to be filled
 */
 
-__global__ void mykernel(int ny, int nx, const float *data, const float *transpose, float *result) {
+__global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *result) {
     int bx = blockIdx.x * blockDim.x;
     int by = blockIdx.y * blockDim.y;
     int tx = threadIdx.x;
@@ -36,7 +36,6 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
     float v1[8];
     float v2[8];
     float vv[8][8];
-    bool condition = ty == 2 && tx == 0;
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
             vv[y][x] = 0;
@@ -46,13 +45,9 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
         for (int i = 0; i < 8; i++) {
             int v1Col = by + ty + i * 8;
             int v2Col = bx + tx + i * 8;
-            v1[i] = transpose[v1Col + k * ny];
-            v2[i] = transpose[v2Col + k * ny];
+            v1[i] = transpose[v1Col + k * nn];
+            v2[i] = transpose[v2Col + k * nn];
 
-        if (condition) {
-
-            std::printf("v1[0] = %f  , v2[1] = %f  v1 * v2 = %f \n", v1[0], v2[1], v1[0] * v2[1]);
-        }
         }
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
@@ -66,10 +61,6 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
         for (int x = 0; x < 8; x++) {
             int i = bx + tx + x * 8; 
             if (i >= ny) break;
-            if (j == 8 && i == 0) {
-                std::printf("thread x: %i, y: %i  vv[%i][%i]", tx, ty, y, x);
-            } 
-                
             result[j * ny + i] = vv[y][x];
         }
     }
@@ -107,23 +98,38 @@ void correlate(int ny, int nx, const float *data, float *result) {
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < nx; x++) {
             squareNormalized[x + y * nx] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
-            transpose[x * ny + y] = squareNormalized[x + y * nx];
+        }
+    }
+    
+    int nn = roundup(ny, 64);
+
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            if (y < ny) {
+                transpose[x * nn + y] = squareNormalized[x + y * nx];
+            } else {
+                transpose[x * nn + y] = 0;
+            }
         }
     }
 
+    for (int y = 0; y < nx; y++) {
+        for (int x = 0; x < nn; x++) {
+            std::cout << transpose[x + y * nn] << " ";
+        }
+        std::cout << "\n";
+    }
     float* dGPU = NULL;
     float* tGPU = NULL;
-    CHECK(cudaMalloc((void**)&dGPU, nx * ny * sizeof(float)));
-    CHECK(cudaMalloc((void**)&tGPU, nx * ny * sizeof(float)));
+    CHECK(cudaMalloc((void**)&tGPU, nx * nn * sizeof(float)));
     float* rGPU = NULL;
     CHECK(cudaMalloc((void**)&rGPU, ny * ny * sizeof(float)));
     CHECK(cudaMemset(rGPU, 0, ny * ny * sizeof(float)));
-    CHECK(cudaMemcpy(dGPU, squareNormalized, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
-    CHECK(cudaMemcpy(tGPU, transpose, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
+    CHECK(cudaMemcpy(tGPU, transpose, nx * nn * sizeof(float), cudaMemcpyHostToDevice));
 
     dim3 dimBlock(8, 8);
     dim3 dimGrid(divup(ny, 64), divup(ny, 64));
-    mykernel<<<dimGrid, dimBlock>>>(ny, nx, dGPU, tGPU ,rGPU);
+    mykernel<<<dimGrid, dimBlock>>>(nn, ny, nx, tGPU ,rGPU);
     CHECK(cudaGetLastError());
 
     CHECK(cudaMemcpy(result, rGPU, ny * ny * sizeof(float), cudaMemcpyDeviceToHost));
