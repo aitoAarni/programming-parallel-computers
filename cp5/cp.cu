@@ -48,7 +48,6 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
             if (v1Col >= ny || v2Col >= ny) break;
             v1[i] = transpose[v1Col + k * ny];
             v2[i] = transpose[v2Col + k * ny];
-            std::printf("thread (%i, %i), block: (%i, %i) \n calcing v1: %i = %f  and v2: %i = %f\n\n", tx, ty, bx, by, v1Col + k * ny, v1[i], v2Col + k * ny, v2[i]);
 
         }
         for (int y = 0; y < 8; y++) {
@@ -64,7 +63,6 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *transpo
             int i = bx + tx + x * 8; 
             if (i >= ny) break;
             result[j * ny + i] = vv[y][x];
-            std::printf("result (%i, %i) = %f \n\n", i, j, result[j * ny + i]);
         }
     }
 }
