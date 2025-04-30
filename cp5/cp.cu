@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <cuda_runtime.h>
+#include <stdio.h>
 
 static inline void check(cudaError_t err, const char* context) {
     if (err != cudaSuccess) {
@@ -26,7 +27,7 @@ This is the function you need to implement. Quick reference:
 - only parts with 0 <= j <= i < ny need to be filled
 */
 
-__global__ void mykernel(int ny, int nx, const float *data, const float *tranpose, float *result) {
+__global__ void mykernel(int ny, int nx, const float *data, const float *transpose, float *result) {
     int bx = blockIdx.x * blockDim.x;
     int by = blockIdx.y * blockDim.y;
     int tx = threadIdx.x;
@@ -45,8 +46,9 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *tranpos
             int v1Col = by + ty + i * 8;
             int v2Col = bx + tx + i * 8;
             if (v1Col >= ny || v2Col >= ny) break;
-            v1[i] = tranpose[v1Col + k * ny];
+            v1[i] = transpose[v1Col + k * ny];
             v2[i] = transpose[v2Col + k * ny];
+            std::printf("thread (%i, %i), block: (%i, %i) \n calcing v1: %i = %f  and v2: %i = %f\n\n", tx, ty, bx, by, v1Col + k * ny, v1[i], v2Col + k * ny, v2[i]);
 
         }
         for (int y = 0; y < 8; y++) {
@@ -58,10 +60,11 @@ __global__ void mykernel(int ny, int nx, const float *data, const float *tranpos
     for (int y = 0; y < 8; y++) {
         int j = by + ty + y * 8;
         if (j >= ny) return;
-        for (int x = 0; x < 0; x++) {
+        for (int x = 0; x < 8; x++) {
             int i = bx + tx + x * 8; 
             if (i >= ny) break;
             result[j * ny + i] = vv[y][x];
+            std::printf("result (%i, %i) = %f \n\n", i, j, result[j * ny + i]);
         }
     }
 }
