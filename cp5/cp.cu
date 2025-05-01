@@ -5,7 +5,9 @@
 #include <iostream>
 #include <cuda_runtime.h>
 #include <stdio.h>
+#include <chrono>
 
+using namespace std::chrono;
 static inline void check(cudaError_t err, const char* context) {
     if (err != cudaSuccess) {
         std::cerr << "CUDA error: " << context << ": "
@@ -15,8 +17,7 @@ static inline void check(cudaError_t err, const char* context) {
 }
 
 #define CHECK(x) check(x, #x)
-float zeroNormalized[160000000];
-float squareNormalized[160000000];
+float d[160000000];
 float transpose[160000000];
 /*
 This is the function you need to implement. Quick reference:
@@ -61,7 +62,6 @@ __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *
             }
             #pragma unroll
             for (int y = 0; y < 8; y++) {
-                #pragma unroll
                 for (int x = 0; x < 8; x++) {
                     vv[y][x] += v1[y] * v2[x];
                 }
@@ -87,44 +87,37 @@ static inline int roundup(int a, int b) {
     return divup(a, b) * b;
 }
 
+//__global__ void precompute(int nn, int ny, int nx, const float data)
+
 void correlate(int ny, int nx, const float *data, float *result) {
-    std::vector<float> means(ny, 0.0);
-    std::vector<float> squareSums(ny, 0.0);
+    int nn = roundup(ny, 64);
+    auto start1 = high_resolution_clock::now();
+
+    #pragma omp parallel for
     for (int y = 0; y < ny; y++) {
         float sum = 0;
         for (int x = 0; x < nx; x++) {
             sum += data[x+y*nx];
         }
-        means[y] = sum / nx;
-    }
-    
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-           zeroNormalized[x+y*nx] = data[x+y*nx] - means[y]; 
-        }
-    }
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            squareSums[y] += std::pow(zeroNormalized[x+y*nx], 2);           
-        }
-    }
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            squareNormalized[x + y * nx] = zeroNormalized[x+y*nx] / std::sqrt(squareSums[y]);
-        }
-    }
-    
-    int nn = roundup(ny, 64);
 
-    for (int y = 0; y < ny; y++) {
+        float mean = sum / nx;
         for (int x = 0; x < nx; x++) {
-            if (y < ny) {
-                transpose[x * nn + y] = squareNormalized[x + y * nx];
-            } else {
-                transpose[x * nn + y] = 0;
-            }
+           d[x+y*nx] = data[x+y*nx] - mean; 
         }
-    }
+
+        float squareSum = 0;
+        for (int x = 0; x < nx; x++) {
+            squareSum += std::pow(d[x+y*nx], 2);           
+        }
+
+            for (int x = 0; x < nx; x++) {
+                d[x + y * nx] = d[x+y*nx] / std::sqrt(squareSum);
+                transpose[x * nn + y] = d[x + y * nx];
+        }
+    } 
+
+    auto end1 = high_resolution_clock::now();
+    auto start2 = high_resolution_clock::now();
 
     float* tGPU = NULL;
     CHECK(cudaMalloc((void**)&tGPU, nx * nn * sizeof(float)));
@@ -132,14 +125,23 @@ void correlate(int ny, int nx, const float *data, float *result) {
     CHECK(cudaMalloc((void**)&rGPU, ny * ny * sizeof(float)));
     CHECK(cudaMemset(rGPU, 0, ny * ny * sizeof(float)));
     CHECK(cudaMemcpy(tGPU, transpose, nx * nn * sizeof(float), cudaMemcpyHostToDevice));
+    auto end2 = high_resolution_clock::now();
 
     dim3 dimBlock(8, 8);
     dim3 dimGrid(divup(ny, 64), divup(ny, 64));
+    auto start3 = high_resolution_clock::now();
+
     mykernel<<<dimGrid, dimBlock>>>(nn, ny, nx, tGPU ,rGPU);
+    auto end3 = high_resolution_clock::now();
+
     CHECK(cudaGetLastError());
 
     CHECK(cudaMemcpy(result, rGPU, ny * ny * sizeof(float), cudaMemcpyDeviceToHost));
     CHECK(cudaFree(tGPU));
     CHECK(cudaFree(rGPU));
+    auto duration1 = std::chrono::duration<double, std::milli>(end1 - start1).count();
+    auto duration2 = std::chrono::duration<double, std::milli>(end2 - start2).count();
+    auto duration3 = std::chrono::duration<double, std::milli>(end3 - start3).count();
 
+    std::printf("first: %f  second %f  third: %f", duration1, duration2, duration3);
 }
