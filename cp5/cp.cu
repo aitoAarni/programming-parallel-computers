@@ -127,7 +127,7 @@ __global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, 
     for (int x = tx; x < nx; x += blockDim.x) {
         float v = d[x + y * nx] / norm;
         d[x + y * nx] = v;
-        transpose[x * nn + y] = v;
+        transpose[x * nn + y] = v
     }
 }
 
