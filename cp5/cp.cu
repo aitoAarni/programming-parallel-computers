@@ -28,8 +28,9 @@ This is the function you need to implement. Quick reference:
 */
 
 __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *result) {
-    __shared__ float shared1[64];
-    __shared__ float shared2[64];
+    const int ms = 4;
+    __shared__ float shared1[ms][64];
+    __shared__ float shared2[ms][64];
     int bx = blockIdx.x * 64;
     int by = blockIdx.y * 64;
     int tx = threadIdx.x;
@@ -43,23 +44,31 @@ __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *
             vv[y][x] = 0;
         }
     }
-    for (int k = 0; k < nx; k++) {
-        shared1[tx * 8 + ty] = transpose[by + ty + 8 * tx + k * nn];
-        shared2[ty * 8 + tx] = transpose[bx + tx + 8 * ty + k * nn];
-        __syncthreads();
-        for (int i = 0; i < 8; i++) {
-            int v1Col = ty + i * 8;
-            int v2Col = tx + i * 8;
-            v1[i] = shared1[v1Col];
-            v2[i] = shared2[v2Col];
+    for (int k = 0; k < nx; k += ms) {
+        #pragma unroll
+        for (int i = 0; i < ms; i++) {
+            if (i + k >= nx) break;
+            shared1[i][tx * 8 + ty] = transpose[by + ty + 8 * tx + (i + k) * nn];
+            shared2[i][ty * 8 + tx] = transpose[bx + tx + 8 * ty + (i + k) * nn];
         }
         __syncthreads();
-        for (int y = 0; y < 8; y++) {
-            for (int x = 0; x < 8; x++) {
-                vv[y][x] += v1[y] * v2[x];
+        #pragma unroll
+        for (int rotation = 0; rotation < ms; rotation++) {
+            if (rotation + k >= nx) break;
+            for (int i = 0; i < 8; i++) {
+                int v1Col = ty + i * 8;
+                int v2Col = tx + i * 8;
+                v1[i] = shared1[rotation][v1Col];
+                v2[i] = shared2[rotation][v2Col];
+            }
+            for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < 8; x++) {
+                    vv[y][x] += v1[y] * v2[x];
+                }
             }
         }
-        
+        __syncthreads();
+            
     }
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
