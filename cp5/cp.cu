@@ -47,28 +47,27 @@ __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *
     for (int k = 0; k < nx; k += ms) {
         #pragma unroll
         for (int i = 0; i < ms; i++) {
-            if (i + k >= nx) break;
             shared1[i][tx * 8 + ty] = transpose[by + ty + 8 * tx + (i + k) * nn];
             shared2[i][ty * 8 + tx] = transpose[bx + tx + 8 * ty + (i + k) * nn];
         }
         __syncthreads();
         #pragma unroll
-        for (int rotation = 0; rotation < ms; rotation++) {
-            if (rotation + k >= nx) break;
+        for (int rotation = 0; rotation < ms && rotation + k < nx; rotation++) {
             for (int i = 0; i < 8; i++) {
                 int v1Col = ty + i * 8;
                 int v2Col = tx + i * 8;
                 v1[i] = shared1[rotation][v1Col];
                 v2[i] = shared2[rotation][v2Col];
             }
+            #pragma unroll
             for (int y = 0; y < 8; y++) {
+                #pragma unroll
                 for (int x = 0; x < 8; x++) {
                     vv[y][x] += v1[y] * v2[x];
                 }
             }
         }
         __syncthreads();
-            
     }
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
