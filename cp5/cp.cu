@@ -5,7 +5,9 @@
 #include <iostream>
 #include <cuda_runtime.h>
 #include <stdio.h>
-#include <
+#include <chrono>
+
+using namespace std::chrono;
 static inline void check(cudaError_t err, const char* context) {
     if (err != cudaSuccess) {
         std::cerr << "CUDA error: " << context << ": "
@@ -132,7 +134,7 @@ __global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, 
     for (int x = tx; x < nx; x += blockDim.x) {
         float v = d[x + y * nx] / norm;
         d[x + y * nx] = v;
-        transpose[x * nn + y] = v
+        transpose[x * nn + y] = v;
     }
 }
 
