@@ -45,11 +45,24 @@ __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *
             vv[y][x] = 0;
         }
     }
+    
+    // Initialize shared memory to avoid uninitialized reads
+    for (int i = 0; i < ms; i++) {
+        shared1[i][tx * 8 + ty] = 0.0f;
+        shared2[i][ty * 8 + tx] = 0.0f;
+    }
+    __syncthreads();
+    
     for (int k = 0; k < nx; k += ms) {
         #pragma unroll
         for (int i = 0; i < ms; i++) {
-            shared1[i][tx * 8 + ty] = transpose[by + ty + 8 * tx + (i + k) * nn];
-            shared2[i][ty * 8 + tx] = transpose[bx + tx + 8 * ty + (i + k) * nn];
+            if (i + k >= nx) break;
+            int idx1 = by + ty + 8 * tx + (i + k) * nn;
+            int idx2 = bx + tx + 8 * ty + (i + k) * nn;
+            if (idx1 < nn * nx && idx2 < nn * nx) {
+                shared1[i][tx * 8 + ty] = transpose[idx1];
+                shared2[i][ty * 8 + tx] = transpose[idx2];
+            }
         }
         __syncthreads();
         #pragma unroll
@@ -87,61 +100,108 @@ static inline int roundup(int a, int b) {
     return divup(a, b) * b;
 }
 
-//__global__ void precompute(int nn, int ny, int nx, const float data)
+__global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, float* transpose) {
+    int y = blockIdx.x;    
+    int tx = threadIdx.x;  
+
+    __shared__ float sum_shared;
+    __shared__ float sqsum_shared;
+
+    float partial_sum = 0.0f;
+    float partial_sqsum = 0.0f;
+
+    for (int x = tx; x < nx; x += blockDim.x) {
+        partial_sum += data[x + y * nx];
+    }
+
+    __shared__ float temp[256]; 
+    temp[tx] = partial_sum;
+    __syncthreads();
+
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tx < stride) temp[tx] += temp[tx + stride];
+        __syncthreads();
+    }
+
+    if (tx == 0) sum_shared = temp[0];
+    __syncthreads();
+
+    float mean = sum_shared / nx;
+
+    // Step 2: subtract mean and compute squared sum
+    for (int x = tx; x < nx; x += blockDim.x) {
+        float v = data[x + y * nx] - mean;
+        d[x + y * nx] = v;
+        partial_sqsum += v * v;
+    }
+
+    temp[tx] = partial_sqsum;
+    __syncthreads();
+
+    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+        if (tx < stride) temp[tx] += temp[tx + stride];
+        __syncthreads();
+    }
+
+    if (tx == 0) sqsum_shared = temp[0];
+    __syncthreads();
+
+    float norm = sqrtf(sqsum_shared);
+
+    // Step 3: normalize and store transpose
+    for (int x = tx; x < nx; x += blockDim.x) {
+        float v = d[x + y * nx] / norm;
+        d[x + y * nx] = v;
+        transpose[x * nn + y] = v;
+    }
+}
+
 
 void correlate(int ny, int nx, const float *data, float *result) {
-    int nn = roundup(ny, 64);
     auto start1 = high_resolution_clock::now();
+    float* dataGPU;
+    CHECK(cudaMalloc(&dataGPU, nx * ny * sizeof(float)));
+    CHECK(cudaMemcpy(dataGPU, data, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
 
-    #pragma omp parallel for
-    for (int y = 0; y < ny; y++) {
-        float sum = 0;
-        for (int x = 0; x < nx; x++) {
-            sum += data[x+y*nx];
-        }
+    int nn = roundup(ny, 64);
+    float* dGPU;
+    float* tGPU;
+    CHECK(cudaMalloc(&dGPU, nx * ny * sizeof(float)));
+    CHECK(cudaMalloc(&tGPU, nx * nn * sizeof(float)));
 
-        float mean = sum / nx;
-        for (int x = 0; x < nx; x++) {
-           d[x+y*nx] = data[x+y*nx] - mean; 
-        }
-
-        float squareSum = 0;
-        for (int x = 0; x < nx; x++) {
-            squareSum += std::pow(d[x+y*nx], 2);           
-        }
-
-            for (int x = 0; x < nx; x++) {
-                d[x + y * nx] = d[x+y*nx] / std::sqrt(squareSum);
-                transpose[x * nn + y] = d[x + y * nx];
-        }
-    } 
+    dim3 preBlock(256);
+    dim3 preGrid(ny);  // one block per row
+    preprocess<<<preGrid, preBlock>>>(ny, nx, nn, dataGPU, dGPU, tGPU);
+    CHECK(cudaGetLastError());
 
     auto end1 = high_resolution_clock::now();
     auto start2 = high_resolution_clock::now();
 
-    float* tGPU = NULL;
-    CHECK(cudaMalloc((void**)&tGPU, nx * nn * sizeof(float)));
     float* rGPU = NULL;
     CHECK(cudaMalloc((void**)&rGPU, ny * ny * sizeof(float)));
     CHECK(cudaMemset(rGPU, 0, ny * ny * sizeof(float)));
-    CHECK(cudaMemcpy(tGPU, transpose, nx * nn * sizeof(float), cudaMemcpyHostToDevice));
     auto end2 = high_resolution_clock::now();
 
     dim3 dimBlock(8, 8);
     dim3 dimGrid(divup(ny, 64), divup(ny, 64));
     auto start3 = high_resolution_clock::now();
 
-    mykernel<<<dimGrid, dimBlock>>>(nn, ny, nx, tGPU ,rGPU);
+    mykernel<<<dimGrid, dimBlock>>>(nn, ny, nx, tGPU, rGPU);
     auto end3 = high_resolution_clock::now();
 
     CHECK(cudaGetLastError());
 
     CHECK(cudaMemcpy(result, rGPU, ny * ny * sizeof(float), cudaMemcpyDeviceToHost));
+    
+    // Free all GPU memory allocations
+    CHECK(cudaFree(dataGPU));  // Fix: Added missing free for dataGPU
+    CHECK(cudaFree(dGPU));     // Fix: Added missing free for dGPU
     CHECK(cudaFree(tGPU));
     CHECK(cudaFree(rGPU));
+    
     auto duration1 = std::chrono::duration<double, std::milli>(end1 - start1).count();
     auto duration2 = std::chrono::duration<double, std::milli>(end2 - start2).count();
     auto duration3 = std::chrono::duration<double, std::milli>(end3 - start3).count();
 
-    std::printf("first: %f  second %f  third: %f", duration1, duration2, duration3);
+    // std::printf("first: %f  second %f  third: %f", duration1, duration2, duration3);
 }
