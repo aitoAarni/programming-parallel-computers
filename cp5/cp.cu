@@ -28,8 +28,8 @@ This is the function you need to implement. Quick reference:
 */
 
 __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *result) {
-    int bx = blockIdx.x * blockDim.x;
-    int by = blockIdx.y * blockDim.y;
+    int bx = blockIdx.x * 64;
+    int by = blockIdx.y * 64;
     int tx = threadIdx.x;
     int ty = threadIdx.y;
     if (bx + tx >= ny || by + ty >= ny || by > bx) return;
@@ -113,12 +113,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
 
-    for (int y = 0; y < nx; y++) {
-        for (int x = 0; x < nn; x++) {
-            std::cout << transpose[x + y * nn] << " ";
-        }
-        std::cout << "\n";
-    }
     float* dGPU = NULL;
     float* tGPU = NULL;
     CHECK(cudaMalloc((void**)&tGPU, nx * nn * sizeof(float)));
