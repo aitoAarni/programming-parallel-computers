@@ -29,9 +29,6 @@ This is the function you need to implement. Quick reference:
 */
 
 __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *result) {
-    const int ms = 4;
-    __shared__ float shared1[ms][64];
-    __shared__ float shared2[ms][64];
     int bx = blockIdx.x * 64;
     int by = blockIdx.y * 64;
     int tx = threadIdx.x;
@@ -45,48 +42,26 @@ __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *
             vv[y][x] = 0;
         }
     }
-    
-    // Initialize shared memory to avoid uninitialized reads
-    for (int i = 0; i < ms; i++) {
-        shared1[i][tx * 8 + ty] = 0.0f;
-        shared2[i][ty * 8 + tx] = 0.0f;
-    }
-    __syncthreads();
-    
-    for (int k = 0; k < nx; k += ms) {
-        #pragma unroll
-        for (int i = 0; i < ms; i++) {
-            if (i + k >= nx) break;
-            int idx1 = by + ty + 8 * tx + (i + k) * nn;
-            int idx2 = bx + tx + 8 * ty + (i + k) * nn;
-            if (idx1 < nn * nx && idx2 < nn * nx) {
-                shared1[i][tx * 8 + ty] = transpose[idx1];
-                shared2[i][ty * 8 + tx] = transpose[idx2];
+    for (int k = 0; k < nx; k++) {
+        for (int i = 0; i < 8; i++) {
+            int v1Col = by + ty + i * 8;
+            int v2Col = bx + tx + i * 8;
+            v1[i] = transpose[v1Col + k * nn];
+            v2[i] = transpose[v2Col + k * nn];
+
+        }
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                vv[y][x] += v1[y] * v2[x];
             }
         }
-        __syncthreads();
-        #pragma unroll
-        for (int rotation = 0; rotation < ms && rotation + k < nx; rotation++) {
-            for (int i = 0; i < 8; i++) {
-                int v1Col = ty + i * 8;
-                int v2Col = tx + i * 8;
-                v1[i] = shared1[rotation][v1Col];
-                v2[i] = shared2[rotation][v2Col];
-            }
-            #pragma unroll
-            for (int y = 0; y < 8; y++) {
-                for (int x = 0; x < 8; x++) {
-                    vv[y][x] += v1[y] * v2[x];
-                }
-            }
-        }
-        __syncthreads();
     }
     for (int y = 0; y < 8; y++) {
+        int j = by + ty + y * 8;
+        if (j >= ny) return;
         for (int x = 0; x < 8; x++) {
-            int j = by + ty + y * 8;
             int i = bx + tx + x * 8; 
-            if (i >= ny || j >= ny) break;
+            if (i >= ny) break;
             result[j * ny + i] = vv[y][x];
         }
     }
