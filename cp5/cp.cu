@@ -28,8 +28,8 @@ This is the function you need to implement. Quick reference:
 */
 
 __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *result) {
-    __shared__ float shared1[64 * 2];
-    __shared__ float shared2[64 * 2];
+    __shared__ float shared1[64];
+    __shared__ float shared2[64];
     int bx = blockIdx.x * 64;
     int by = blockIdx.y * 64;
     int tx = threadIdx.x;
@@ -45,20 +45,21 @@ __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *
     }
     for (int k = 0; k < nx; k++) {
         shared1[tx * 8 + ty] = transpose[by + ty + 8 * tx + k * nn];
-        shared1[ty * 8 + tx] = transpose[bx + tx + 8 * ty + k * nn];
+        shared2[ty * 8 + tx] = transpose[bx + tx + 8 * ty + k * nn];
         __syncthreads();
         for (int i = 0; i < 8; i++) {
-            int v1Col = by + ty + i * 8;
-            int v2Col = bx + tx + i * 8;
-            v1[i] = transpose[v1Col + k * nn];
-            v2[i] = transpose[v2Col + k * nn];
-
+            int v1Col = ty + i * 8;
+            int v2Col = tx + i * 8;
+            v1[i] = shared1[v1Col];
+            v2[i] = shared2[v2Col];
         }
+        __syncthreads();
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
                 vv[y][x] += v1[y] * v2[x];
             }
         }
+        
     }
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
