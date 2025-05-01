@@ -113,7 +113,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
         }
     }
 
-    float* dGPU = NULL;
     float* tGPU = NULL;
     CHECK(cudaMalloc((void**)&tGPU, nx * nn * sizeof(float)));
     float* rGPU = NULL;
@@ -127,7 +126,6 @@ void correlate(int ny, int nx, const float *data, float *result) {
     CHECK(cudaGetLastError());
 
     CHECK(cudaMemcpy(result, rGPU, ny * ny * sizeof(float), cudaMemcpyDeviceToHost));
-    CHECK(cudaFree(dGPU));
     CHECK(cudaFree(tGPU));
     CHECK(cudaFree(rGPU));
 
