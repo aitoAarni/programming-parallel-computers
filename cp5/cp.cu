@@ -30,8 +30,6 @@ This is the function you need to implement. Quick reference:
 */
 
 __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *result) {
-    __shared__ float shared1[64];
-    __shared__ float shared2[64];
     int bx = blockIdx.x * 64;
     int by = blockIdx.y * 64;
     int tx = threadIdx.x;
@@ -46,28 +44,25 @@ __global__ void mykernel(int nn, int ny, int nx, const float *transpose, float *
         }
     }
     for (int k = 0; k < nx; k++) {
-        shared1[tx * 8 + ty] = transpose[by + ty + 8 * tx + k * nn];
-        shared2[ty * 8 + tx] = transpose[bx + tx + 8 * ty + k * nn];
-        __syncthreads();
         for (int i = 0; i < 8; i++) {
-            int v1Col = ty + i * 8;
-            int v2Col = tx + i * 8;
-            v1[i] = shared1[v1Col];
-            v2[i] = shared2[v2Col];
+            int v1Col = by + ty + i * 8;
+            int v2Col = bx + tx + i * 8;
+            v1[i] = transpose[v1Col + k * nn];
+            v2[i] = transpose[v2Col + k * nn];
+
         }
-        __syncthreads();
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
                 vv[y][x] += v1[y] * v2[x];
             }
         }
-        
     }
     for (int y = 0; y < 8; y++) {
+        int j = by + ty + y * 8;
+        if (j >= ny) return;
         for (int x = 0; x < 8; x++) {
-            int j = by + ty + y * 8;
             int i = bx + tx + x * 8; 
-            if (i >= ny || j >= ny) break;
+            if (i >= ny) break;
             result[j * ny + i] = vv[y][x];
         }
     }
@@ -107,6 +102,15 @@ __global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, 
         
 }
 
+__global__ void zeroPadTranspose(int ny, int nn, int nx, float* transpose) {
+    int y = blockIdx.x * blockDim.x + threadIdx.x;
+    if (y >= ny && y < nn) {
+        for (int x = 0; x < nx; x++) {
+            transpose[x * nn + y] = 0.0f;
+        }
+    }
+}
+
 
 void correlate(int ny, int nx, const float *data, float *result) {
     auto start1 = high_resolution_clock::now();
@@ -124,6 +128,10 @@ void correlate(int ny, int nx, const float *data, float *result) {
     dim3 preGrid(roundup(ny, 256));  // one block per row
     preprocess<<<preGrid, preBlock>>>(ny, nx, nn, dataGPU, dGPU, tGPU);
     CHECK(cudaGetLastError());
+dim3 zeroBlock(256);
+dim3 zeroGrid(divup(nn, 256));
+zeroPadTranspose<<<zeroGrid, zeroBlock>>>(ny, nn, nx, tGPU);
+CHECK(cudaGetLastError());
 
     auto end1 = high_resolution_clock::now();
     auto start2 = high_resolution_clock::now();
