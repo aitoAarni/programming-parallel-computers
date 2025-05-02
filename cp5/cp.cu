@@ -1,7 +1,10 @@
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
+#include <iostream>
 #include <cuda_runtime.h>
+#include <stdio.h>
+#include <chrono>
 
 static inline void check(cudaError_t err, const char* context) {
     if (err != cudaSuccess) {
@@ -70,7 +73,7 @@ static inline int roundup(int a, int b) {
 
 
 __global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, float* transpose) {
-        int y = blockIdx.x * 256 + threadIdx.x;
+        int y = blockIdx.x * blockDim.x  + threadIdx.x;
         if (y >= nn) return;
         if (y >= ny) {
             for (int x = 0; x < nx; x++) {
@@ -112,8 +115,8 @@ void correlate(int ny, int nx, const float *data, float *result) {
     CHECK(cudaMalloc(&dGPU, nx * ny * sizeof(float)));
     CHECK(cudaMalloc(&tGPU, nx * nn * sizeof(float)));
 
-    dim3 preBlock(256);
-    dim3 preGrid(roundup(ny, 256));  
+    dim3 preBlock(64);
+    dim3 preGrid(roundup(ny, 64));  
     preprocess<<<preGrid, preBlock>>>(ny, nx, nn, dataGPU, dGPU, tGPU);
     CHECK(cudaGetLastError());
 
