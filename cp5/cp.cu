@@ -83,59 +83,28 @@ static inline int roundup(int a, int b) {
 
 
 __global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, float* transpose) {
-    int y = blockIdx.x;    
-    int tx = threadIdx.x;  
+        int y = blockIdx.x * 256 + threadIdx.x;
+        if (y >= ny) return;
+        float sum = 0;
+        for (int x = 0; x < nx; x++) {
+            sum += data[x+y*nx];
+        }
 
-    __shared__ float sum_shared;
-    __shared__ float sqsum_shared;
+        float mean = sum / nx;
+        for (int x = 0; x < nx; x++) {
+           d[x+y*nx] = data[x+y*nx] - mean; 
+        }
 
-    float partial_sum = 0.0f;
-    float partial_sqsum = 0.0f;
+        float squareSum = 0;
+        for (int x = 0; x < nx; x++) {
+            squareSum += std::pow(d[x+y*nx], 2);           
+        }
 
-    for (int x = tx; x < nx; x += blockDim.x) {
-        partial_sum += data[x + y * nx];
-    }
-
-    __shared__ float temp[256]; 
-    temp[tx] = partial_sum;
-    __syncthreads();
-
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (tx < stride) temp[tx] += temp[tx + stride];
-        __syncthreads();
-    }
-
-    if (tx == 0) sum_shared = temp[0];
-    __syncthreads();
-
-    float mean = sum_shared / nx;
-
-    // Step 2: subtract mean and compute squared sum
-    for (int x = tx; x < nx; x += blockDim.x) {
-        float v = data[x + y * nx] - mean;
-        d[x + y * nx] = v;
-        partial_sqsum += v * v;
-    }
-
-    temp[tx] = partial_sqsum;
-    __syncthreads();
-
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (tx < stride) temp[tx] += temp[tx + stride];
-        __syncthreads();
-    }
-
-    if (tx == 0) sqsum_shared = temp[0];
-    __syncthreads();
-
-    float norm = sqrtf(sqsum_shared);
-
-    // Step 3: normalize and store transpose
-    for (int x = tx; x < nx; x += blockDim.x) {
-        float v = d[x + y * nx] / norm;
-        d[x + y * nx] = v;
-        transpose[x * nn + y] = v;
-    }
+            for (int x = 0; x < nx; x++) {
+                d[x + y * nx] = d[x+y*nx] / std::sqrt(squareSum);
+                transpose[x * nn + y] = d[x + y * nx];
+        }
+        
 }
 
 
@@ -152,7 +121,7 @@ void correlate(int ny, int nx, const float *data, float *result) {
     CHECK(cudaMalloc(&tGPU, nx * nn * sizeof(float)));
 
     dim3 preBlock(256);
-    dim3 preGrid(ny);  // one block per row
+    dim3 preGrid(roundup(ny, 256));  // one block per row
     preprocess<<<preGrid, preBlock>>>(ny, nx, nn, dataGPU, dGPU, tGPU);
     CHECK(cudaGetLastError());
 
