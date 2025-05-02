@@ -1,13 +1,8 @@
-#include <vector>
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
 #include <cuda_runtime.h>
-#include <stdio.h>
-#include <chrono>
 
-using namespace std::chrono;
 static inline void check(cudaError_t err, const char* context) {
     if (err != cudaSuccess) {
         std::cerr << "CUDA error: " << context << ": "
@@ -17,9 +12,6 @@ static inline void check(cudaError_t err, const char* context) {
 }
 
 #define CHECK(x) check(x, #x)
-float zeroNormalized[160000000];
-float squareNormalized[160000000];
-float transpose[160000000];
 /*
 This is the function you need to implement. Quick reference:
 - input rows: 0 <= y < ny
@@ -79,7 +71,13 @@ static inline int roundup(int a, int b) {
 
 __global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, float* transpose) {
         int y = blockIdx.x * 256 + threadIdx.x;
-        if (y >= ny) return;
+        if (y >= nn) return;
+        if (y >= ny) {
+            for (int x = 0; x < nx; x++) {
+                transpose[x * nn + y] = 0;
+            }
+            return;
+        }
         float sum = 0;
         for (int x = 0; x < nx; x++) {
             sum += data[x+y*nx];
@@ -102,18 +100,8 @@ __global__ void preprocess(int ny, int nx, int nn, const float* data, float* d, 
         
 }
 
-__global__ void zeroPadTranspose(int ny, int nn, int nx, float* transpose) {
-    int y = blockIdx.x * blockDim.x + threadIdx.x;
-    if (y >= ny && y < nn) {
-        for (int x = 0; x < nx; x++) {
-            transpose[x * nn + y] = 0.0f;
-        }
-    }
-}
-
 
 void correlate(int ny, int nx, const float *data, float *result) {
-    auto start1 = high_resolution_clock::now();
     float* dataGPU;
     CHECK(cudaMalloc(&dataGPU, nx * ny * sizeof(float)));
     CHECK(cudaMemcpy(dataGPU, data, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
@@ -125,42 +113,30 @@ void correlate(int ny, int nx, const float *data, float *result) {
     CHECK(cudaMalloc(&tGPU, nx * nn * sizeof(float)));
 
     dim3 preBlock(256);
-    dim3 preGrid(roundup(ny, 256));  // one block per row
+    dim3 preGrid(roundup(ny, 256));  
     preprocess<<<preGrid, preBlock>>>(ny, nx, nn, dataGPU, dGPU, tGPU);
     CHECK(cudaGetLastError());
-dim3 zeroBlock(256);
-dim3 zeroGrid(divup(nn, 256));
-zeroPadTranspose<<<zeroGrid, zeroBlock>>>(ny, nn, nx, tGPU);
-CHECK(cudaGetLastError());
 
-    auto end1 = high_resolution_clock::now();
-    auto start2 = high_resolution_clock::now();
 
     float* rGPU = NULL;
     CHECK(cudaMalloc((void**)&rGPU, ny * ny * sizeof(float)));
     CHECK(cudaMemset(rGPU, 0, ny * ny * sizeof(float)));
-    auto end2 = high_resolution_clock::now();
 
     dim3 dimBlock(8, 8);
     dim3 dimGrid(divup(ny, 64), divup(ny, 64));
-    auto start3 = high_resolution_clock::now();
 
     mykernel<<<dimGrid, dimBlock>>>(nn, ny, nx, tGPU, rGPU);
-    auto end3 = high_resolution_clock::now();
 
     CHECK(cudaGetLastError());
 
     CHECK(cudaMemcpy(result, rGPU, ny * ny * sizeof(float), cudaMemcpyDeviceToHost));
     
-    // Free all GPU memory allocations
-    CHECK(cudaFree(dataGPU));  // Fix: Added missing free for dataGPU
-    CHECK(cudaFree(dGPU));     // Fix: Added missing free for dGPU
+
+    CHECK(cudaFree(dataGPU));
+    CHECK(cudaFree(dGPU));
     CHECK(cudaFree(tGPU));
     CHECK(cudaFree(rGPU));
     
-    auto duration1 = std::chrono::duration<double, std::milli>(end1 - start1).count();
-    auto duration2 = std::chrono::duration<double, std::milli>(end2 - start2).count();
-    auto duration3 = std::chrono::duration<double, std::milli>(end3 - start3).count();
 
     // std::printf("first: %f  second %f  third: %f", duration1, duration2, duration3);
 }
