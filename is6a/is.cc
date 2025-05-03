@@ -17,13 +17,13 @@ struct ResultD {
     int x0;
     int y1;
     int x1;
-    double4_t outer;
-    double4_t inner;
+    float8_t outer;
+    float8_t inner;
 };
 
 
-double4_t rec_sum[600][600];
-double4_t sum_square[600][600];
+float8_t rec_sum[600][600];
+float8_t sum_square[600][600];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -40,8 +40,8 @@ Result segment(int ny, int nx, const float *data) {
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
-            double4_t sum = {0, 0, 0, 0};
-            double4_t square_sum = {0, 0, 0, 0};
+            float8_t sum = {0, 0, 0, 0, 0, 0, 0, 0};
+            float8_t square_sum = {0, 0, 0, 0, 0, 0, 0, 0};
             if (x > 0) {
                 sum += rec_sum[y][x-1];
                 square_sum += sum_square[y][x-1];
@@ -66,19 +66,19 @@ Result segment(int ny, int nx, const float *data) {
     for (int i = 0; i < 22; i ++) {
         min_thread[i] = 10e+5;
     }
-    const double4_t total_sum = rec_sum[ny - 1][nx - 1];
-    const double4_t total_square_sum = sum_square[ny - 1][nx - 1];
+    const float8_t total_sum = rec_sum[ny - 1][nx - 1];
+    const float8_t total_square_sum = sum_square[ny - 1][nx - 1];
 
     #pragma omp parallel
     {
 
         double total_sse[rowBlock][columnBlock];
-        double4_t sum[rowBlock][columnBlock];
-        double4_t square_sum[rowBlock][columnBlock];
-        double4_t background_sum[rowBlock][columnBlock];
-        double4_t background_square_sum[rowBlock][columnBlock];
-        double4_t rec_sse[rowBlock][columnBlock];
-        double4_t background_sse[rowBlock][columnBlock];
+        float8_t sum[rowBlock][columnBlock];
+        float8_t square_sum[rowBlock][columnBlock];
+        float8_t background_sum[rowBlock][columnBlock];
+        float8_t background_square_sum[rowBlock][columnBlock];
+        float8_t rec_sse[rowBlock][columnBlock];
+        float8_t background_sse[rowBlock][columnBlock];
         int thread = omp_get_thread_num();
         double lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 1)
@@ -87,8 +87,8 @@ Result segment(int ny, int nx, const float *data) {
             for (int y1 = y0; y1 < ny; y1 += rowBlock){
                     for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
                         
-                        double4_t rec_size[rowBlock][columnBlock] = {};
-                        double4_t background_size[rowBlock][columnBlock] = {};
+                        float8_t rec_size[rowBlock][columnBlock] = {};
+                        float8_t background_size[rowBlock][columnBlock] = {};
                         for (int i = 0; i < rowBlock; i++) {
                             for (int j = 0; j < columnBlock; j++) {
 
