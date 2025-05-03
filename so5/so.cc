@@ -4,6 +4,7 @@
 typedef unsigned long long data_t;
 
 int partition(data_t *arr, int low, int high) {
+
     int mid = low + (high - low) / 2;
     
     if (arr[mid] < arr[low])
@@ -34,7 +35,6 @@ int partition(data_t *arr, int low, int high) {
 
 void quickSort(data_t *arr, int low, int high, int depth) {
     const int threshold = 32;
-    
     if (high - low <= threshold) {
         for (int i = low + 1; i <= high; i++) {
             data_t key = arr[i];
