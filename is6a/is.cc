@@ -33,8 +33,8 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    constexpr int columnBlock = 2;
-    constexpr int rowBlock = 2;
+    constexpr int columnBlock = 1;
+    constexpr int rowBlock = 1;
     int newX = (nx + columnBlock - 1) / columnBlock;
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -85,10 +85,10 @@ Result segment(int ny, int nx, const float *data) {
         int thread = omp_get_thread_num();
         double lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 1)
-        for (int y0 = 0; y0 < ny; y0++) {
-            for (int x0 = 0; x0 < nx; x0++) {
-            for (int y1 = y0; y1 < ny; y1 += rowBlock){
-                    for (int x1 = x0 ; x1 < nx; x1 += columnBlock) {
+        for (int y1 = 0; y1 < ny; y1++) {
+            for (int x1 = 0; x1 < nx; x1++) {
+            for (int y0 = 0; y0 <= y1; y0 += rowBlock){
+                    for (int x0 = 0 ; x0 <= x1; x0 += columnBlock) {
                         
                         float8_t rec_size[rowBlock][columnBlock] = {};
                         float8_t background_size[rowBlock][columnBlock] = {};
