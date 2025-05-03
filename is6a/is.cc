@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <chrono>
 #include <omp.h>
 struct Result {
     int y0;
@@ -10,7 +11,6 @@ struct Result {
     float inner[3];
 };
 
-typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double))));
 typedef float float8_t __attribute__ ((vector_size ( 8 * sizeof(float))));
 struct ResultD {
     int y0;
@@ -36,6 +36,7 @@ Result segment(int ny, int nx, const float *data) {
     constexpr int columnBlock = 2;
     constexpr int rowBlock = 2;
     int newX = (nx + columnBlock - 1) / columnBlock;
+    auto start = std::chrono::high_resolution_clock::now();
 
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
@@ -60,6 +61,7 @@ Result segment(int ny, int nx, const float *data) {
             sum_square[y][x] = square_sum;
         }
     }
+    auto end = std::chrono::high_resolution_clock::now();
 
     ResultD res[22];
     double min_thread[22];
@@ -68,6 +70,7 @@ Result segment(int ny, int nx, const float *data) {
     }
     const float8_t total_sum = rec_sum[ny - 1][nx - 1];
     const float8_t total_square_sum = sum_square[ny - 1][nx - 1];
+    auto start2 = std::chrono::high_resolution_clock::now();
 
     #pragma omp parallel
     {
@@ -150,6 +153,10 @@ Result segment(int ny, int nx, const float *data) {
         }
         }
     }
+    auto end2 = std::chrono::high_resolution_clock::now();
+    auto t1 = std::chrono::duration<double>(end - start);
+    auto t2 =  std::chrono::duration<double>(end2 - start2);
+    printf("t1: %f   t2: %f", t1.count(), t2.count());
     double minimum = 10e+50;
     for (int i = 0; i < 22; i++) {
         if (min_thread[i] < minimum) {
