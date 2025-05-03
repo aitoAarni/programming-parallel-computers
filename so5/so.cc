@@ -2,6 +2,7 @@
 #include <omp.h>
 
 typedef unsigned long long data_t;
+using namespace std;
 
 int partition(data_t *arr, int low, int high) {
     int mid = low + (high - low) / 2;
@@ -33,21 +34,20 @@ int partition(data_t *arr, int low, int high) {
 }
 
 void quickSort(data_t *arr, int low, int high, int depth) {
-    //const int threshold = 32;
-    
-    //if (high - low <= threshold) {
-    //    for (int i = low + 1; i <= high; i++) {
-    //        data_t key = arr[i];
-    //        int j = i - 1;
-    //        while (j >= low && arr[j] > key) {
-    //            arr[j + 1] = arr[j];
-    //            j--;
-    //        }
-    //        arr[j + 1] = key;
-    //    }
-    //    return;
-    //}
-    
+    const int threshold = 32;
+    if (high - low <= threshold) {
+        for (int i = low + 1; i <= high; i++) {
+            data_t key = arr[i];
+            int j = i - 1;
+            while (j >= low && arr[j] > key) {
+                arr[j + 1] = arr[j];
+                j--;
+            }
+            arr[j + 1] = key;
+        }
+        return;
+    }
+    if (high < low) return;    
     int pivotIdx = partition(arr, low, high);
     
     
