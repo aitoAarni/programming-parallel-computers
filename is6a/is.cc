@@ -11,7 +11,7 @@ struct Result {
 };
 
 typedef double double4_t __attribute__ ((vector_size (4 * sizeof(double))));
-
+typedef float float8_t __attribute__ ((vector_size ( 8 * sizeof(float))));
 struct ResultD {
     int y0;
     int x0;
@@ -54,10 +54,8 @@ Result segment(int ny, int nx, const float *data) {
                     square_sum -= sum_square[y-1][x-1];
                 }
             }
-            for (int i = 0; i<3; i++) {
-                sum[i] += data[baseIndex + i];
-                square_sum[i] +=  data[baseIndex + i] * data[baseIndex + i];
-            }
+            sum[0] += data[baseIndex + 0];
+            square_sum[0] +=  data[baseIndex + 0] * data[baseIndex + 0];
             rec_sum[y][x] = sum;
             sum_square[y][x] = square_sum;
         }
@@ -161,11 +159,11 @@ Result segment(int ny, int nx, const float *data) {
             result.y1 = res[i].y1;
             result.x1 = res[i].x1;
             result.inner[0] = res[i].inner[0];
-            result.inner[1] = res[i].inner[1];
-            result.inner[2] = res[i].inner[2];
+            result.inner[1] = res[i].inner[0];
+            result.inner[2] = res[i].inner[0];
             result.outer[0] = res[i].outer[0];
-            result.outer[1] = res[i].outer[1];
-            result.outer[2] = res[i].outer[2];
+            result.outer[1] = res[i].outer[0];
+            result.outer[2] = res[i].outer[0];
         }
     }
     return result;
