@@ -6,7 +6,11 @@ using namespace std;
 
 int partition(data_t *arr, int low, int high) {
   
-    swap(arr[low], arr[high]);
+    int mid = low + (high - low) / 2;
+if (arr[mid] < arr[low]) swap(arr[low], arr[mid]);
+if (arr[high] < arr[low]) swap(arr[low], arr[high]);
+if (arr[mid] < arr[high]) swap(arr[mid], arr[high]);
+swap(arr[mid], arr[high]); 
     data_t pivot = arr[high];
     int i = low - 1;
 
@@ -31,15 +35,21 @@ void quickSort(data_t *arr, int low, int high) {
         quickSort(arr, low, pi - 1);
         #pragma omp task
         quickSort(arr, pi + 1, high);
+        #pragma omp taskwait
+
     } else {
         std::sort(arr + low, arr + high + 1);
     }
     }
 }
 void psort(int n, data_t *data) {
+    // std::sort(data, data + n);
     #pragma omp parallel
-    #pragma omp single
     {
-        quickSort(data, 0, n - 1);
+
+        #pragma omp single
+        {
+            quickSort(data, 0, n - 1);
+        }
     }
 }
