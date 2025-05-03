@@ -21,15 +21,26 @@ int partition(data_t *arr, int low, int high) {
 }
 
 void quickSort(data_t *arr, int low, int high) {
-  
+    
     if (low < high) {
-      
-        int pi = partition(arr, low, high);
+    if (high - low > 10000) {
 
+        int pi = partition(arr, low, high);
+        #pragma omp task
+        quickSort(arr, low, pi - 1);
+        #pragma omp task
+        quickSort(arr, pi + 1, high);
+    } else {
+        int pi = partition(arr, low, high);
         quickSort(arr, low, pi - 1);
         quickSort(arr, pi + 1, high);
     }
+    }
 }
 void psort(int n, data_t *data) {
-    quickSort(data, 0, n - 1);
+    #pragma omp parallel
+    #pragma omp single
+    {
+        quickSort(data, 0, n - 1);
+    }
 }
