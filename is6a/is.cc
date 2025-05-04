@@ -62,21 +62,21 @@ Result segment(int ny, int nx, const float *data) {
         min_thread[i] = 10e+5;
     }
 
-    std::cout << "\n\n  right asnwer fr fr\n";
+    // std::cout << "\n\n  right asnwer fr fr\n";
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < nx; x++) {
-            std::cout << rec_sum[y][x] << " ";
+        //     std::cout << rec_sum[y][x] << " ";
         }
-        std::cout << "\n";
+      //   std::cout << "\n";
     }
-    std::cout << "\n\nvector regs: \n";
+    // std::cout << "\n\nvector regs: \n";
     for (int y = 0; y < ny; y++) {
         for (int x = 0; x < nx; x += 8) {
             for (int i = 0; i < 8; i++) {
-                std::cout << rec_sum_vec[y][x / 8][i] << " ";
+                // std::cout << rec_sum_vec[y][x / 8][i] << " ";
             }
         }
-        std::cout << "\n";
+        // std::cout << "\n";
     }
     
 
@@ -97,10 +97,10 @@ Result segment(int ny, int nx, const float *data) {
         // #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
-                printf("\n\n(x1, y1): (%i, %i)\n", x1, y1);
+                // printf("\n\n(x1, y1): (%i, %i)\n", x1, y1);
                 for (int y0 = 0; y0 <= y1; y0++){
                     for (int x0 = 0; x0  <= (x1 + 7) / 8; x0++) {
-                        printf("(x1+7)/8 = %i \n", (x1 + 7) / 8);
+                        // printf("(x1+7)/8 = %i \n", (x1 + 7) / 8);
                         float8_t rec_size;
                         float8_t background_size;
                         float wide_rec_sum_float = y0 > 0 ? rec_sum[y0 - 1][x1] : 0;
@@ -120,9 +120,9 @@ Result segment(int ny, int nx, const float *data) {
                         }
 
                         for (int i = 0; i < 8; i++) {
-                            printf("x0 + i: %i \n", x0 * 8 + i);
+                            // printf("x0 + i: %i \n", x0 * 8 + i);
                             if (i + x0 * 8 > x1) break;
-                            printf("x0: %i,  whole rec sum: %f, wide_rec_sum %f, long_rec_sum %f, small_rec_sum: %f \n", i + x0 * 8, sum[i], wide_rec_sum[i], long_rec_sum[i], small_rec_sum[i]);
+                            // printf("x0: %i,  whole rec sum: %f, wide_rec_sum %f, long_rec_sum %f, small_rec_sum: %f \n", i + x0 * 8, sum[i], wide_rec_sum[i], long_rec_sum[i], small_rec_sum[i]);
                         }
                         sum -= wide_rec_sum;
                         sum -= long_rec_sum;
