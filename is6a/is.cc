@@ -12,6 +12,7 @@ struct Result {
 };
 
 typedef float float8_t __attribute__ ((vector_size ( 8 * sizeof(float))));
+
 struct ResultD {
     int y0;
     int x0;
@@ -75,7 +76,6 @@ Result segment(int ny, int nx, const float *data) {
 
         float total_sse[rowBlock][columnBlock];
         float sum[rowBlock][columnBlock];
-        float square_sum[rowBlock][columnBlock];
         float background_sum[rowBlock][columnBlock];
         float background_square_sum[rowBlock][columnBlock];
         float rec_sse[rowBlock][columnBlock];
@@ -96,20 +96,16 @@ Result segment(int ny, int nx, const float *data) {
                                 if (y1 + i >= ny || x1 + j >= nx) break;
                                 total_sse[i][j] = 0;
                                 sum[i][j] = rec_sum[y1 + i][x1 + j];
-                                square_sum[i][j] = rec_sum[y1 + i][x1 + j];
                                 
                                 
                                 if (y0 > 0) {
                                 sum[i][j] -= rec_sum[y0-1][x1 + j];
-                                square_sum[i][j] -= rec_sum[y0-1][x1 + j];   
                             }
                             if (x0 > 0) {
                                 sum[i][j] -= rec_sum[y1 + i][x0-1];
-                                square_sum[i][j] -= rec_sum[y1 + i][x0-1];   
                             }
                             if (y0>0 && x0>0) {
                                 sum[i][j] += rec_sum[y0-1][x0-1];
-                                square_sum[i][j] += rec_sum[y0-1][x0-1];   
                             }
                        
                             rec_size[i][j] = (x1-x0+1 + j) * (y1-y0 + 1 + i);
@@ -124,8 +120,8 @@ Result segment(int ny, int nx, const float *data) {
                         if (y1 + i >= ny || x1 + j >= nx) break;
                         
                         background_sum[i][j] = total_sum - sum[i][j];
-                        background_square_sum[i][j] = total_square_sum - square_sum[i][j];
-                        rec_sse[i][j] = square_sum[i][j] - ((sum[i][j] * sum[i][j]) / (rec_size[i][j]));
+                        background_square_sum[i][j] = total_square_sum - sum[i][j];
+                        rec_sse[i][j] = sum[i][j] - ((sum[i][j] * sum[i][j]) / (rec_size[i][j]));
                         background_sse[i][j] = background_square_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size[i][j]);
                         for (int z = 0; z < 3; z++) {
                             total_sse[i][j] += rec_sse[i][j];
