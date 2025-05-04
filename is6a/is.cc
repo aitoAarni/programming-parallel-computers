@@ -34,6 +34,7 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
+    int vecX = (nx + 7)/ 8;
     constexpr int columnBlock = 1;
     constexpr int rowBlock = 1;
     int newX = (nx + columnBlock - 1) / columnBlock;
@@ -82,11 +83,12 @@ Result segment(int ny, int nx, const float *data) {
         #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
-            for (int y0 = 0; y0 <= y1; y0 += rowBlock){
-                    for (int x0 = 0 ; x0 <= x1; x0 += columnBlock) {
+            for (int y0 = 0; y0 <= y1; y0 ++){
+                    for (int x0 = 0; x0 * 8 <= x1; x0 += 8) {
                         
                         float rec_size[rowBlock][columnBlock] = {};
                         float background_size[rowBlock][columnBlock] = {};
+
                         for (int i = 0; i < rowBlock; i++) {
                             for (int j = 0; j < columnBlock; j++) {
 
