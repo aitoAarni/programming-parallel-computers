@@ -24,7 +24,7 @@ struct ResultD {
 
 
 float rec_sum[600][600];
-float8_t rec_sum_vec [600][75];
+float8_t rec_sum_vec [600][76];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -60,6 +60,24 @@ Result segment(int ny, int nx, const float *data) {
     }
     auto end = std::chrono::high_resolution_clock::now();
     
+    std::cout << "vector regs: \n";
+    auto end = std::chrono::high_resolution_clock::now();
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x += 8) {
+            for (int i = 0; i < 8; i++) {
+                std::cout << rec_sum_vec[y][x / 8][i] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
+    
+    std::cout << "\n\n  right asnwer fr fr\n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            std::cout << rec_sum[y][x] << " ";
+        }
+        std::cout << "\n";
+    }
 
     ResultD res[22];
     double min_thread[22];
