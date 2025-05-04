@@ -73,67 +73,57 @@ Result segment(int ny, int nx, const float *data) {
     #pragma omp parallel
     {
 
-        float total_sse[rowBlock][columnBlock];
-        float sum[rowBlock][columnBlock];
-        float background_sum[rowBlock][columnBlock];
-        float rec_sse[rowBlock][columnBlock];
-        float background_sse[rowBlock][columnBlock];
+        float total_sse;
+        float sum;
+        float background_sum;
+        float rec_sse;
+        float background_sse;
         int thread = omp_get_thread_num();
         float lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
-            for (int y0 = 0; y0 <= y1; y0 ++){
-                    for (int x0 = 0; x0 * 8 <= x1; x0 += 8) {
+            for (int y0 = 0; y0 <= y1; y0++){
+                    for (int x0 = 0; x0 <= x1; x0++) {
                         
-                        float rec_size[rowBlock][columnBlock] = {};
-                        float background_size[rowBlock][columnBlock] = {};
+                        float rec_size;
+                        float background_size;
 
-                        for (int i = 0; i < rowBlock; i++) {
-                            for (int j = 0; j < columnBlock; j++) {
-
-                                if (y1 + i >= ny || x1 + j >= nx) break;
-                                total_sse[i][j] = 0;
-                                sum[i][j] = rec_sum[y1 + i][x1 + j];
+                                total_sse = 0;
+                                sum = rec_sum[y1][x1];
                                 
                                 
                                 if (y0 > 0) {
-                                sum[i][j] -= rec_sum[y0-1][x1 + j];
+                                sum -= rec_sum[y0-1][x1];
                             }
                             if (x0 > 0) {
-                                sum[i][j] -= rec_sum[y1 + i][x0-1];
+                                sum -= rec_sum[y1][x0-1];
                             }
                             if (y0>0 && x0>0) {
-                                sum[i][j] += rec_sum[y0-1][x0-1];
+                                sum += rec_sum[y0-1][x0-1];
                             }
                        
-                            rec_size[i][j] = (x1-x0+1 + j) * (y1-y0 + 1 + i);
-                            background_size[i][j] = ny * nx - rec_size[i][j];
-                        }
-                    }
-                    for (int i = 0; i < rowBlock; i++) {
-                        for (int j = 0; j < columnBlock; j++) {
+                            rec_size = (x1-x0+1) * (y1-y0 + 1);
+                            background_size = ny * nx - rec_size;
 
                         
                         
-                        if (y1 + i >= ny || x1 + j >= nx) break;
-                        
-                        background_sum[i][j] = total_sum - sum[i][j];
-                        rec_sse[i][j] = sum[i][j] - ((sum[i][j] * sum[i][j]) / (rec_size[i][j]));
-                        background_sse[i][j] = background_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size[i][j]);
+                        background_sum = total_sum - sum;
+                        rec_sse = sum - ((sum * sum) / (rec_size));
+                        background_sse = background_sum - ((background_sum * background_sum) / background_size);
                         for (int z = 0; z < 3; z++) {
-                            total_sse[i][j] += rec_sse[i][j];
-                            total_sse[i][j] += background_sse[i][j];
+                            total_sse += rec_sse;
+                            total_sse += background_sse;
                         }
-                        if (total_sse[i][j] < lowest_score) {
-                            min_thread[thread] = total_sse[i][j];                                                        
-                            lowest_score = total_sse[i][j];
+                        if (total_sse < lowest_score) {
+                            min_thread[thread] = total_sse;                                                        
+                            lowest_score = total_sse;
                             res[thread].y0 = y0;
                             res[thread].x0 = x0;
-                            res[thread].y1 = y1 + 1 + i;
-                            res[thread].x1 = x1 + 1 + j;
-                            res[thread].inner = sum[i][j] / rec_size[i][j];
-                            res[thread].outer = background_sum[i][j] / background_size[i][j];
+                            res[thread].y1 = y1 + 1;
+                            res[thread].x1 = x1 + 1;
+                            res[thread].inner = sum / rec_size;
+                            res[thread].outer = background_sum / background_size;
                         }
                     }
              }       
@@ -141,8 +131,6 @@ Result segment(int ny, int nx, const float *data) {
             }
             
         }
-        }
-    }
     auto end2 = std::chrono::high_resolution_clock::now();
     auto t1 = std::chrono::duration<double>(end - start);
     auto t2 =  std::chrono::duration<double>(end2 - start2);
