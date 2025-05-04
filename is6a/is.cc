@@ -62,22 +62,11 @@ Result segment(int ny, int nx, const float *data) {
             rec_sum[y][x] = sum;
             sum_square[y][x] = square_sum;
             rec_sum_vec[y][x / 8][x % 8] = sum;
-            printf("y: %i, x: %i, vec i: %i, val: %f \n", y, x / 8, x % 8, rec_sum_vec[y][x / 8][x % 8]);
             sum_square_vec[y][x / 8][x % 8] = square_sum;
         }
         std::cout << "\n\n";
     }
-    
-    std::cout << "vector regs: \n";
     auto end = std::chrono::high_resolution_clock::now();
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x += 8) {
-            for (int i = 0; i < 8; i++) {
-                std::cout << rec_sum_vec[y][x / 8][i] << " ";
-            }
-        }
-        std::cout << "\n";
-    }
     
     std::cout << "\n\n  right asnwer fr fr\n";
     for (int y = 0; y < ny; y++) {
@@ -87,13 +76,20 @@ Result segment(int ny, int nx, const float *data) {
         std::cout << "\n";
     }
 
+    std::cout << "\n\n second one squared\n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            std::cout << sum_square[y][x] << " ";
+        }
+        std::cout << "\n";
+    }
     ResultD res[22];
     double min_thread[22];
     for (int i = 0; i < 22; i ++) {
         min_thread[i] = 10e+5;
     }
     const float total_sum = rec_sum[ny - 1][nx - 1];
-    const float total_square_sum = sum_square[ny - 1][nx - 1];
+    const float total_square_sum = rec_sum[ny - 1][nx - 1];
     auto start2 = std::chrono::high_resolution_clock::now();
 
     #pragma omp parallel
@@ -122,20 +118,20 @@ Result segment(int ny, int nx, const float *data) {
                                 if (y1 + i >= ny || x1 + j >= nx) break;
                                 total_sse[i][j] = 0;
                                 sum[i][j] = rec_sum[y1 + i][x1 + j];
-                                square_sum[i][j] = sum_square[y1 + i][x1 + j];
+                                square_sum[i][j] = rec_sum[y1 + i][x1 + j];
                                 
                                 
                                 if (y0 > 0) {
                                 sum[i][j] -= rec_sum[y0-1][x1 + j];
-                                square_sum[i][j] -= sum_square[y0-1][x1 + j];   
+                                square_sum[i][j] -= rec_sum[y0-1][x1 + j];   
                             }
                             if (x0 > 0) {
                                 sum[i][j] -= rec_sum[y1 + i][x0-1];
-                                square_sum[i][j] -= sum_square[y1 + i][x0-1];   
+                                square_sum[i][j] -= rec_sum[y1 + i][x0-1];   
                             }
                             if (y0>0 && x0>0) {
                                 sum[i][j] += rec_sum[y0-1][x0-1];
-                                square_sum[i][j] += sum_square[y0-1][x0-1];   
+                                square_sum[i][j] += rec_sum[y0-1][x0-1];   
                             }
                        
                             rec_size[i][j] = (x1-x0+1 + j) * (y1-y0 + 1 + i);
