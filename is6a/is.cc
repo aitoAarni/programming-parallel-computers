@@ -36,7 +36,7 @@ This is the function you need to implement. Quick reference:
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     auto start = std::chrono::high_resolution_clock::now();
-    constexpr int vert_par = 1;
+    constexpr int vert_par = 2;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
@@ -74,8 +74,15 @@ Result segment(int ny, int nx, const float *data) {
 
         float8_t total_sse[vert_par];
         float8_t sum[vert_par];
+        float8_t rec_size[vert_par];
+        float8_t background_size[vert_par];
+        float8_t wide_rec_sum[vert_par];
+        float8_t small_rec_sum[vert_par];
         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
             sum[vert_y] = f8Zero;
+            rec_size[vert_y] = f8Zero;
+            wide_rec_sum[vert_y] = f8Zero;
+            small_rec_sum[vert_y] = f8Zero;
         }
         float8_t background_sum[vert_par];
         float8_t rec_sse;
@@ -88,10 +95,7 @@ Result segment(int ny, int nx, const float *data) {
                 for (int y0 = 0; y0 <= y1; y0 += vert_par){
                     for (int x0 = 0; x0  <= (x1 + 7) / 8; x0++) {
                         float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
-                        float8_t rec_size[vert_par];
-                        float8_t background_size[vert_par];
-                        float8_t wide_rec_sum[vert_par];
-                        float8_t small_rec_sum[vert_par];
+
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
                             float wide_rec_sum_float = y0 + vert_y > 0 ? rec_sum[y0 - 1 + vert_y][x1] : 0;
