@@ -84,8 +84,9 @@ Result segment(int ny, int nx, const float *data) {
     for (int i = 0; i < 22; i ++) {
         min_thread[i] = 10e+5;
     }
-    const float total_sum = rec_sum[ny - 1][nx - 1];
-    const float total_square_sum = rec_sum[ny - 1][nx - 1];
+
+    const float o = rec_sum[ny - 1][nx - 1];
+    const float8_t total_sum = {o, o, o, o, o, o, o, o};
     auto start2 = std::chrono::high_resolution_clock::now();
 
     #pragma omp parallel
@@ -104,51 +105,52 @@ Result segment(int ny, int nx, const float *data) {
                 for (int y0 = 0; y0 <= y1; y0++){
                     for (int x0 = 0; x0 * 8 <= x1; x0 += 8) {
                         
-                        float rec_size;
-                        float background_size;
+                        float8_t rec_size;
+                        float8_t background_size;
                         float8_t wide_sum = {0, 0, 0, 0, 0, 0, 0, 0};
-                            total_sse = {0, 0, 0, 0, 0, 0, 0, 0};
-                            float wide_rec_sum_float = y0 > 0 ? rec_sum[y0 - 1][x1] : 0;
-                            float8_t wide_rec_sum;
-                            float8_t small_rec_sum;                              
-                            float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
+                        total_sse = {0, 0, 0, 0, 0, 0, 0, 0};
+                        float wide_rec_sum_float = y0 > 0 ? rec_sum[y0 - 1][x1] : 0;
+                        float8_t wide_rec_sum;
+                        float8_t small_rec_sum;                              
+                        float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
+                        for (int i = 0; i < 8; i++) {
+                            sum[i] = rec_sum[y1][x1];
+                            wide_rec_sum[i] = wide_rec_sum_float;
+                        }
+                        if (y0 > 0) {
+                            small_rec_sum = rec_sum_vec[y0 - 1][x0];
+                        } else {
                             for (int i = 0; i < 8; i++) {
-                                sum[i] = rec_sum[y1][x1];
-                                wide_rec_sum[i] = wide_rec_sum_float;
+                                small_rec_sum[i] = 0;
                             }
-                            if (y0 > 0) {
-                                for (int i = 0; i < 8; i++) {
-                                    small_rec_sum[i] = 0;
-                                }
-                            } else {
-                                small_rec_sum = rec_sum_vec[y0 - 1][x0];
-                            }
+                        }
 
-                            sum -= wide_rec_sum;
-                            sum -= long_rec_sum;
-                            sum += small_rec_sum;
-                                
-                            rec_size = (x1-x0+1) * (y1-y0 + 1);
-                            background_size = ny * nx - rec_size;
+                        sum -= wide_rec_sum;
+                        sum -= long_rec_sum;
+                        sum += small_rec_sum;
+                        
+                        for (int i= 0; i < 8; i++) {
+                            rec_size[i] = (x1-x0+1 + i) * (y1-y0 + 1);
+                            background_size[i] = ny * nx - rec_size[i];
+                        }
 
-                        
-                        
+                    
+                    
                         background_sum = total_sum - sum;
                         rec_sse = sum - ((sum * sum) / (rec_size));
                         background_sse = background_sum - ((background_sum * background_sum) / background_size);
-                        for (int z = 0; z < 3; z++) {
-                            total_sse += rec_sse;
-                            total_sse += background_sse;
-                        }
-                        if (total_sse < lowest_score) {
-                            min_thread[thread] = total_sse;                                                        
-                            lowest_score = total_sse;
-                            res[thread].y0 = y0;
-                            res[thread].x0 = x0;
-                            res[thread].y1 = y1 + 1;
-                            res[thread].x1 = x1 + 1;
-                            res[thread].inner = sum / rec_size;
-                            res[thread].outer = background_sum / background_size;
+
+                        for (int i = 0; i < 8; i++) {
+                            if (rec_sse[i] + background_sse[i] < lowest_score) {
+                                min_thread[thread] = rec_sse[i] + background_sse[i];                                                        
+                                lowest_score = rec_sse[i] + background_sse[i];
+                                res[thread].y0 = y0 + i;
+                                res[thread].x0 = x0 + i;
+                                res[thread].y1 = y1 + 1;
+                                res[thread].x1 = x1 + 1;
+                                res[thread].inner = sum[i] / rec_size[i];
+                                res[thread].outer = background_sum[i] / background_size[i];
+                            }
                         }
                     }
              }       
