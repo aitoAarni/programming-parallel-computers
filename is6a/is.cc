@@ -35,7 +35,7 @@ This is the function you need to implement. Quick reference:
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     auto start = std::chrono::high_resolution_clock::now();
-
+    int vecX = (nx + 7) / 8;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
@@ -97,9 +97,10 @@ Result segment(int ny, int nx, const float *data) {
         // #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
+                printf("\n\n(x1, y1): (%i, %i)\n", x1, y1);
                 for (int y0 = 0; y0 <= y1; y0++){
-                    for (int x0 = 0; x0 * 8 <= x1; x0 += 8) {
-                        printf("(x0, y0): %i, %i  to  (x1, y1): %i, %i \n", x0, y0, x1, y1);
+                    for (int x0 = 0; x0  <= (x1 + 7) / 8; x0++) {
+                        printf("(x1+7)/8 = %i \n", (x1 + 7) / 8);
                         float8_t rec_size;
                         float8_t background_size;
                         float wide_rec_sum_float = y0 > 0 ? rec_sum[y0 - 1][x1] : 0;
@@ -119,15 +120,15 @@ Result segment(int ny, int nx, const float *data) {
                         }
 
                         for (int i = 0; i < 8; i++) {
-                            if (i + x0 > x1) break;
-                            printf("x0: %i,  whole rec sum: %f, wide_rec_sum %f, long_rec_sum %f, small_rec_sum: %f \n", i + x0, sum[i], wide_rec_sum[i], long_rec_sum[i], small_rec_sum[i]);
+                            printf("x0 + i: %i \n", x0 * 8 + i);
+                            if (i + x0 * 8 > x1) break;
+                            printf("x0: %i,  whole rec sum: %f, wide_rec_sum %f, long_rec_sum %f, small_rec_sum: %f \n", i + x0 * 8, sum[i], wide_rec_sum[i], long_rec_sum[i], small_rec_sum[i]);
                         }
-                        printf("\n\n");
                         sum -= wide_rec_sum;
                         sum -= long_rec_sum;
                         sum += small_rec_sum;
                         for (int i= 0; i < 8; i++) {
-                            rec_size[i] = (x1-x0+1 - i > 0) ? (x1-x0+1 - i) * (y1-y0 + 1) : 1;
+                            rec_size[i] = (x1-x0 * 8+1 - i > 0) ? (x1- 8 * x0+1 - i) * (y1-y0 + 1) : 1;
                             background_size[i] = ny * nx - rec_size[i];
                         }
 
@@ -138,12 +139,12 @@ Result segment(int ny, int nx, const float *data) {
                         background_sse = background_sum - ((background_sum * background_sum) / background_size);
                         total_sse = rec_sse + background_sse;
                         for (int i = 0; i < 8; i++) {
-                            if (i + x0 > x1) continue;
+                            if (i + x0 * 8 > x1) continue;
                             if (total_sse[i] < lowest_score) {
                                 min_thread[thread] = total_sse[i];                                                        
                                 lowest_score = total_sse[i];
                                 res[thread].y0 = y0;
-                                res[thread].x0 = x0 + i;
+                                res[thread].x0 = x0 * 8 + i;
                                 res[thread].y1 = y1 + 1;
                                 res[thread].x1 = x1 + 1;
                                 res[thread].inner = sum[i] / rec_size[i];
