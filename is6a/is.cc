@@ -35,6 +35,7 @@ This is the function you need to implement. Quick reference:
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     auto start = std::chrono::high_resolution_clock::now();
+    constexpr int vert_par = 1;
     int vecX = (nx + 7) / 8;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
@@ -71,9 +72,9 @@ Result segment(int ny, int nx, const float *data) {
     #pragma omp parallel
     {
 
-        float8_t total_sse;
-        float8_t sum = {0, 0, 0, 0, 0, 0, 0, 0};
-        float8_t background_sum;
+        float8_t total_sse[vert_par];
+        float8_t sum[vert_par];
+        float8_t background_sum[vert_par];
         float8_t rec_sse;
         float8_t background_sse;
         int thread = omp_get_thread_num();
@@ -81,53 +82,63 @@ Result segment(int ny, int nx, const float *data) {
         #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
-                for (int y0 = 0; y0 <= y1; y0++){
+                for (int y0 = 0; y0 <= y1; y0 += vert_par){
                     for (int x0 = 0; x0  <= (x1 + 7) / 8; x0++) {
-                        float8_t rec_size;
-                        float8_t background_size;
-                        float wide_rec_sum_float = y0 > 0 ? rec_sum[y0 - 1][x1] : 0;
-                        float8_t wide_rec_sum;
-                        float8_t small_rec_sum;                              
                         float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
-                        for (int i = 0; i < 8; i++) {
-                            sum[i] = rec_sum[y1][x1];
-                            wide_rec_sum[i] = wide_rec_sum_float;
-                        }
-                        if (y0 > 0) {
-                            small_rec_sum = rec_sum_vec[y0 - 1][x0];
-                        } else {
+                        float8_t rec_size[vert_par];
+                        float8_t background_size[vert_par];
+                        float8_t wide_rec_sum[vert_par];
+                        float8_t small_rec_sum[vert_par];
+                        for (int vert_y; vert_y < vert_par; vert_y++) {
+                            if (vert_y + y0 > y1) continue;
+                            float wide_rec_sum_float = y0 + vert_y > 0 ? rec_sum[y0 - 1 + vert_y][x1] : 0;
                             for (int i = 0; i < 8; i++) {
-                                small_rec_sum[i] = 0;
+                                sum[vert_y][i] = rec_sum[y1][x1];
+                                wide_rec_sum[vert_y][i] = wide_rec_sum_float;
+                            }
+                            if (y0 + vert_y > 0) {
+                                small_rec_sum[vert_y] = rec_sum_vec[y0  + vert_y- 1][x0];
+                            } else {
+                                for (int i = 0; i < 8; i++) {
+                                    small_rec_sum[vert_y][i] = 0;
+                                }
+                            }
+                            
+                            sum[vert_y] -= wide_rec_sum[vert_y];
+                            sum[vert_y] -= long_rec_sum;
+                            sum[vert_y] += small_rec_sum[vert_y];
+                        }
+                        for (int vert_y; vert_y < vert_par; vert_y++) {
+                            
+                            if (vert_y + y0 > y1) continue;
+                            for (int i= 0; i < 8; i++) {
+                                rec_size[vert_y][i] = (x1-x0 * 8+1 - i > 0) ? (x1- 8 * x0+1 - i) * (y1-(y0 + vert_par) + 1) : 1;
+                                background_size[vert_y][i] = ny * nx - rec_size[vert_y][i];
                             }
                         }
 
-                        sum -= wide_rec_sum;
-                        sum -= long_rec_sum;
-                        sum += small_rec_sum;
-                        for (int i= 0; i < 8; i++) {
-                            rec_size[i] = (x1-x0 * 8+1 - i > 0) ? (x1- 8 * x0+1 - i) * (y1-y0 + 1) : 1;
-                            background_size[i] = ny * nx - rec_size[i];
-                        }
-
                     
-                    
-                        background_sum = total_sum - sum;
-                        rec_sse = sum - ((sum * sum) / (rec_size));
-                        background_sse = background_sum - ((background_sum * background_sum) / background_size);
-                        total_sse = rec_sse + background_sse;
+                        
+                        for (int vert_y; vert_y < vert_par; vert_y++) {
+                            if (vert_y + y0 > y1) continue;
+                        background_sum[vert_y] = total_sum - sum[vert_y];
+                        rec_sse = sum[vert_y] - ((sum[vert_y] * sum[vert_y]) / (rec_size[vert_y]));
+                        background_sse = background_sum[vert_y] - ((background_sum[vert_y] * background_sum[vert_y]) / background_size[vert_y]);
+                        total_sse[vert_y] = rec_sse + background_sse;
                         for (int i = 0; i < 8; i++) {
                             if (i + x0 * 8 > x1) continue;
-                            if (total_sse[i] < lowest_score) {
-                                min_thread[thread] = total_sse[i];                                                        
-                                lowest_score = total_sse[i];
-                                res[thread].y0 = y0;
+                            if (total_sse[vert_y][i] < lowest_score) {
+                                min_thread[thread] = total_sse[vert_y][i];                                                        
+                                lowest_score = total_sse[vert_y][i];
+                                res[thread].y0 = y0 + vert_y;
                                 res[thread].x0 = x0 * 8 + i;
                                 res[thread].y1 = y1 + 1;
                                 res[thread].x1 = x1 + 1;
-                                res[thread].inner = sum[i] / rec_size[i];
-                                res[thread].outer = background_sum[i] / background_size[i];
+                                res[thread].inner = sum[vert_y][i] / rec_size[vert_y][i];
+                                res[thread].outer = background_sum[vert_y][i] / background_size[vert_y][i];
                             }
                         }
+                            }
                     }
              }       
                 }
