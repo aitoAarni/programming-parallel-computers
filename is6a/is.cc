@@ -34,10 +34,6 @@ This is the function you need to implement. Quick reference:
 */
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    int vecX = (nx + 7)/ 8;
-    constexpr int columnBlock = 1;
-    constexpr int rowBlock = 1;
-    int newX = (nx + columnBlock - 1) / columnBlock;
     auto start = std::chrono::high_resolution_clock::now();
 
     for (int y = 0; y<ny; y++) {
@@ -60,25 +56,6 @@ Result segment(int ny, int nx, const float *data) {
     }
     auto end = std::chrono::high_resolution_clock::now();
     
-    std::cout << "vector regs: \n";
-    auto end = std::chrono::high_resolution_clock::now();
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x += 8) {
-            for (int i = 0; i < 8; i++) {
-                std::cout << rec_sum_vec[y][x / 8][i] << " ";
-            }
-        }
-        std::cout << "\n";
-    }
-    
-    std::cout << "\n\n  right asnwer fr fr\n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << rec_sum[y][x] << " ";
-        }
-        std::cout << "\n";
-    }
-
     ResultD res[22];
     double min_thread[22];
     for (int i = 0; i < 22; i ++) {
@@ -93,7 +70,7 @@ Result segment(int ny, int nx, const float *data) {
     {
 
         float8_t total_sse;
-        float8_t sum;
+        float8_t sum = {0, 0, 0, 0, 0, 0, 0, 0};
         float8_t background_sum;
         float8_t rec_sse;
         float8_t background_sse;
@@ -107,8 +84,6 @@ Result segment(int ny, int nx, const float *data) {
                         
                         float8_t rec_size;
                         float8_t background_size;
-                        float8_t wide_sum = {0, 0, 0, 0, 0, 0, 0, 0};
-                        total_sse = {0, 0, 0, 0, 0, 0, 0, 0};
                         float wide_rec_sum_float = y0 > 0 ? rec_sum[y0 - 1][x1] : 0;
                         float8_t wide_rec_sum;
                         float8_t small_rec_sum;                              
@@ -139,11 +114,11 @@ Result segment(int ny, int nx, const float *data) {
                         background_sum = total_sum - sum;
                         rec_sse = sum - ((sum * sum) / (rec_size));
                         background_sse = background_sum - ((background_sum * background_sum) / background_size);
-
+                        total_sse = rec_sse + background_sse;
                         for (int i = 0; i < 8; i++) {
-                            if (rec_sse[i] + background_sse[i] < lowest_score) {
-                                min_thread[thread] = rec_sse[i] + background_sse[i];                                                        
-                                lowest_score = rec_sse[i] + background_sse[i];
+                            if (total_sse[i] < lowest_score) {
+                                min_thread[thread] = total_sse[i];                                                        
+                                lowest_score = total_sse[i];
                                 res[thread].y0 = y0 + i;
                                 res[thread].x0 = x0 + i;
                                 res[thread].y1 = y1 + 1;
