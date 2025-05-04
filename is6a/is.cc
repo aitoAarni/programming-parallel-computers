@@ -43,7 +43,6 @@ Result segment(int ny, int nx, const float *data) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
             float sum = 0;
-            float square_sum = 0;
             if (x > 0) {
                 sum += rec_sum[y][x-1];
             }
@@ -54,7 +53,6 @@ Result segment(int ny, int nx, const float *data) {
                 }
             }
             sum += data[baseIndex];
-            square_sum +=  data[baseIndex] * data[baseIndex];
             rec_sum[y][x] = sum;
             rec_sum_vec[y][x / 8][x % 8] = sum;
         }
@@ -77,7 +75,6 @@ Result segment(int ny, int nx, const float *data) {
         float total_sse[rowBlock][columnBlock];
         float sum[rowBlock][columnBlock];
         float background_sum[rowBlock][columnBlock];
-        float background_square_sum[rowBlock][columnBlock];
         float rec_sse[rowBlock][columnBlock];
         float background_sse[rowBlock][columnBlock];
         int thread = omp_get_thread_num();
@@ -120,9 +117,8 @@ Result segment(int ny, int nx, const float *data) {
                         if (y1 + i >= ny || x1 + j >= nx) break;
                         
                         background_sum[i][j] = total_sum - sum[i][j];
-                        background_square_sum[i][j] = total_square_sum - sum[i][j];
                         rec_sse[i][j] = sum[i][j] - ((sum[i][j] * sum[i][j]) / (rec_size[i][j]));
-                        background_sse[i][j] = background_square_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size[i][j]);
+                        background_sse[i][j] = background_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size[i][j]);
                         for (int z = 0; z < 3; z++) {
                             total_sse[i][j] += rec_sse[i][j];
                             total_sse[i][j] += background_sse[i][j];
