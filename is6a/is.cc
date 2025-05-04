@@ -12,6 +12,7 @@ struct Result {
 };
 
 typedef float float8_t __attribute__ ((vector_size ( 8 * sizeof(float))));
+float8_t f8Zero = {0, 0, 0, 0, 0, 0, 0, 0};
 
 struct ResultD {
     int y0;
@@ -36,7 +37,6 @@ Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     auto start = std::chrono::high_resolution_clock::now();
     constexpr int vert_par = 1;
-    int vecX = (nx + 7) / 8;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
@@ -74,6 +74,9 @@ Result segment(int ny, int nx, const float *data) {
 
         float8_t total_sse[vert_par];
         float8_t sum[vert_par];
+        for (int vert_y = 0; vert_y < vert_par; vert_y++) {
+            sum[vert_y] = f8Zero;
+        }
         float8_t background_sum[vert_par];
         float8_t rec_sse;
         float8_t background_sse;
@@ -89,7 +92,7 @@ Result segment(int ny, int nx, const float *data) {
                         float8_t background_size[vert_par];
                         float8_t wide_rec_sum[vert_par];
                         float8_t small_rec_sum[vert_par];
-                        for (int vert_y; vert_y < vert_par; vert_y++) {
+                        for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
                             float wide_rec_sum_float = y0 + vert_y > 0 ? rec_sum[y0 - 1 + vert_y][x1] : 0;
                             for (int i = 0; i < 8; i++) {
@@ -108,18 +111,18 @@ Result segment(int ny, int nx, const float *data) {
                             sum[vert_y] -= long_rec_sum;
                             sum[vert_y] += small_rec_sum[vert_y];
                         }
-                        for (int vert_y; vert_y < vert_par; vert_y++) {
+                        for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             
                             if (vert_y + y0 > y1) continue;
                             for (int i= 0; i < 8; i++) {
-                                rec_size[vert_y][i] = (x1-x0 * 8+1 - i > 0) ? (x1- 8 * x0+1 - i) * (y1-(y0 + vert_par) + 1) : 1;
+                                rec_size[vert_y][i] = (x1-x0 * 8+1 - i > 0) ? (x1- 8 * x0+1 - i) * (y1-(y0 + vert_y) + 1) : 1;
                                 background_size[vert_y][i] = ny * nx - rec_size[vert_y][i];
                             }
                         }
 
                     
                         
-                        for (int vert_y; vert_y < vert_par; vert_y++) {
+                        for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
                         background_sum[vert_y] = total_sum - sum[vert_y];
                         rec_sse = sum[vert_y] - ((sum[vert_y] * sum[vert_y]) / (rec_size[vert_y]));
