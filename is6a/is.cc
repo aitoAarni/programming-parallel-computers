@@ -55,7 +55,7 @@ Result segment(int ny, int nx, const float *data) {
             }
             sum += data[baseIndex];
             rec_sum[y][x] = sum;
-            rec_sum_vec[y][x / 8][x % 8] = sum;
+            rec_sum_vec[y][(x + 1) / 8][(x + 1) % 8] = sum;
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -73,36 +73,43 @@ Result segment(int ny, int nx, const float *data) {
     #pragma omp parallel
     {
 
-        float total_sse;
-        float sum;
-        float background_sum;
-        float rec_sse;
-        float background_sse;
+        float8_t total_sse;
+        float8_t sum;
+        float8_t background_sum;
+        float8_t rec_sse;
+        float8_t background_sse;
         int thread = omp_get_thread_num();
         float lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
-            for (int y0 = 0; y0 <= y1; y0++){
-                    for (int x0 = 0; x0 <= x1; x0++) {
+                for (int y0 = 0; y0 <= y1; y0++){
+                    for (int x0 = 0; x0 * 8 <= x1; x0 += 8) {
                         
                         float rec_size;
                         float background_size;
+                        float8_t wide_sum = {0, 0, 0, 0, 0, 0, 0, 0};
+                            total_sse = {0, 0, 0, 0, 0, 0, 0, 0};
+                            float wide_rec_sum_float = y0 > 0 ? rec_sum[y0 - 1][x1] : 0;
+                            float8_t wide_rec_sum;
+                            float8_t small_rec_sum;                              
+                            float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
+                            for (int i = 0; i < 8; i++) {
+                                sum[i] = rec_sum[y1][x1];
+                                wide_rec_sum[i] = wide_rec_sum_float;
+                            }
+                            if (y0 > 0) {
+                                for (int i = 0; i < 8; i++) {
+                                    small_rec_sum[i] = 0;
+                                }
+                            } else {
+                                small_rec_sum = rec_sum_vec[y0 - 1][x0];
+                            }
 
-                                total_sse = 0;
-                                sum = rec_sum[y1][x1];
+                            sum -= wide_rec_sum;
+                            sum -= long_rec_sum;
+                            sum += small_rec_sum;
                                 
-                                
-                                if (y0 > 0) {
-                                sum -= rec_sum[y0-1][x1];
-                            }
-                            if (x0 > 0) {
-                                sum -= rec_sum[y1][x0-1];
-                            }
-                            if (y0>0 && x0>0) {
-                                sum += rec_sum[y0-1][x0-1];
-                            }
-                       
                             rec_size = (x1-x0+1) * (y1-y0 + 1);
                             background_size = ny * nx - rec_size;
 
