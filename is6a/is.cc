@@ -17,13 +17,15 @@ struct ResultD {
     int x0;
     int y1;
     int x1;
-    float8_t outer;
-    float8_t inner;
+    float outer;
+    float inner;
 };
 
 
-float8_t rec_sum[600][600];
-float8_t sum_square[600][600];
+float rec_sum[600][600];
+float sum_square[600][600];
+float8_t rec_sum_vec [600][75];
+float8_t sum_square_vec[600][75];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -41,8 +43,8 @@ Result segment(int ny, int nx, const float *data) {
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
-            float8_t sum = {0, 0, 0, 0, 0, 0, 0, 0};
-            float8_t square_sum = {0, 0, 0, 0, 0, 0, 0, 0};
+            float sum = 0;
+            float square_sum = 0;
             if (x > 0) {
                 sum += rec_sum[y][x-1];
                 square_sum += sum_square[y][x-1];
@@ -55,8 +57,8 @@ Result segment(int ny, int nx, const float *data) {
                     square_sum -= sum_square[y-1][x-1];
                 }
             }
-            sum[0] += data[baseIndex + 0];
-            square_sum[0] +=  data[baseIndex + 0] * data[baseIndex + 0];
+            sum += data[baseIndex];
+            square_sum +=  data[baseIndex] * data[baseIndex];
             rec_sum[y][x] = sum;
             sum_square[y][x] = square_sum;
         }
@@ -68,30 +70,30 @@ Result segment(int ny, int nx, const float *data) {
     for (int i = 0; i < 22; i ++) {
         min_thread[i] = 10e+5;
     }
-    const float8_t total_sum = rec_sum[ny - 1][nx - 1];
-    const float8_t total_square_sum = sum_square[ny - 1][nx - 1];
+    const float total_sum = rec_sum[ny - 1][nx - 1];
+    const float total_square_sum = sum_square[ny - 1][nx - 1];
     auto start2 = std::chrono::high_resolution_clock::now();
 
     #pragma omp parallel
     {
 
-        double total_sse[rowBlock][columnBlock];
-        float8_t sum[rowBlock][columnBlock];
-        float8_t square_sum[rowBlock][columnBlock];
-        float8_t background_sum[rowBlock][columnBlock];
-        float8_t background_square_sum[rowBlock][columnBlock];
-        float8_t rec_sse[rowBlock][columnBlock];
-        float8_t background_sse[rowBlock][columnBlock];
+        float total_sse[rowBlock][columnBlock];
+        float sum[rowBlock][columnBlock];
+        float square_sum[rowBlock][columnBlock];
+        float background_sum[rowBlock][columnBlock];
+        float background_square_sum[rowBlock][columnBlock];
+        float rec_sse[rowBlock][columnBlock];
+        float background_sse[rowBlock][columnBlock];
         int thread = omp_get_thread_num();
-        double lowest_score = 10e+5;
+        float lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
             for (int y0 = 0; y0 <= y1; y0 += rowBlock){
                     for (int x0 = 0 ; x0 <= x1; x0 += columnBlock) {
                         
-                        float8_t rec_size[rowBlock][columnBlock] = {};
-                        float8_t background_size[rowBlock][columnBlock] = {};
+                        float rec_size[rowBlock][columnBlock] = {};
+                        float background_size[rowBlock][columnBlock] = {};
                         for (int i = 0; i < rowBlock; i++) {
                             for (int j = 0; j < columnBlock; j++) {
 
@@ -114,10 +116,8 @@ Result segment(int ny, int nx, const float *data) {
                                 square_sum[i][j] += sum_square[y0-1][x0-1];   
                             }
                        
-                            for (int z = 0; z < 3; z++) {
-                                rec_size[i][j][z] = (x1-x0+1 + j) * (y1-y0 + 1 + i);
-                                background_size[i][j][z] = ny * nx - rec_size[i][j][z];
-                            }
+                            rec_size[i][j] = (x1-x0+1 + j) * (y1-y0 + 1 + i);
+                            background_size[i][j] = ny * nx - rec_size[i][j];
                         }
                     }
                     for (int i = 0; i < rowBlock; i++) {
@@ -132,8 +132,8 @@ Result segment(int ny, int nx, const float *data) {
                         rec_sse[i][j] = square_sum[i][j] - ((sum[i][j] * sum[i][j]) / (rec_size[i][j]));
                         background_sse[i][j] = background_square_sum[i][j] - ((background_sum[i][j] * background_sum[i][j]) / background_size[i][j]);
                         for (int z = 0; z < 3; z++) {
-                            total_sse[i][j] += rec_sse[i][j][z];
-                            total_sse[i][j] += background_sse[i][j][z];
+                            total_sse[i][j] += rec_sse[i][j];
+                            total_sse[i][j] += background_sse[i][j];
                         }
                         if (total_sse[i][j] < lowest_score) {
                             min_thread[thread] = total_sse[i][j];                                                        
@@ -156,7 +156,7 @@ Result segment(int ny, int nx, const float *data) {
     auto end2 = std::chrono::high_resolution_clock::now();
     auto t1 = std::chrono::duration<double>(end - start);
     auto t2 =  std::chrono::duration<double>(end2 - start2);
-    printf("t1: %f   t2: %f", t1.count(), t2.count());
+    // printf("t1: %f   t2: %f", t1.count(), t2.count());
     double minimum = 10e+50;
     for (int i = 0; i < 22; i++) {
         if (min_thread[i] < minimum) {
@@ -165,12 +165,12 @@ Result segment(int ny, int nx, const float *data) {
             result.x0 = res[i].x0;
             result.y1 = res[i].y1;
             result.x1 = res[i].x1;
-            result.inner[0] = res[i].inner[0];
-            result.inner[1] = res[i].inner[0];
-            result.inner[2] = res[i].inner[0];
-            result.outer[0] = res[i].outer[0];
-            result.outer[1] = res[i].outer[0];
-            result.outer[2] = res[i].outer[0];
+            result.inner[0] = res[i].inner;
+            result.inner[1] = res[i].inner;
+            result.inner[2] = res[i].inner;
+            result.outer[0] = res[i].outer;
+            result.outer[1] = res[i].outer;
+            result.outer[2] = res[i].outer;
         }
     }
     return result;
