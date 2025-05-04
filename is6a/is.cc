@@ -23,9 +23,7 @@ struct ResultD {
 
 
 float rec_sum[600][600];
-float sum_square[600][600];
 float8_t rec_sum_vec [600][75];
-float8_t sum_square_vec[600][75];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -47,42 +45,22 @@ Result segment(int ny, int nx, const float *data) {
             float square_sum = 0;
             if (x > 0) {
                 sum += rec_sum[y][x-1];
-                square_sum += sum_square[y][x-1];
             }
             if (y > 0) {
                 sum += rec_sum[y-1][x];
-                square_sum += sum_square[y-1][x];
                 if (x > 0) {
                     sum -= rec_sum[y-1][x-1];
-                    square_sum -= sum_square[y-1][x-1];
                 }
             }
             sum += data[baseIndex];
             square_sum +=  data[baseIndex] * data[baseIndex];
             rec_sum[y][x] = sum;
-            sum_square[y][x] = square_sum;
             rec_sum_vec[y][x / 8][x % 8] = sum;
-            sum_square_vec[y][x / 8][x % 8] = square_sum;
         }
-        std::cout << "\n\n";
     }
     auto end = std::chrono::high_resolution_clock::now();
     
-    std::cout << "\n\n  right asnwer fr fr\n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << rec_sum[y][x] << " ";
-        }
-        std::cout << "\n";
-    }
 
-    std::cout << "\n\n second one squared\n";
-    for (int y = 0; y < ny; y++) {
-        for (int x = 0; x < nx; x++) {
-            std::cout << sum_square[y][x] << " ";
-        }
-        std::cout << "\n";
-    }
     ResultD res[22];
     double min_thread[22];
     for (int i = 0; i < 22; i ++) {
