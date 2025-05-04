@@ -61,9 +61,31 @@ Result segment(int ny, int nx, const float *data) {
             square_sum +=  data[baseIndex] * data[baseIndex];
             rec_sum[y][x] = sum;
             sum_square[y][x] = square_sum;
+            rec_sum_vec[y][x / 8][x % 8] = sum;
+            printf("y: %i, x: %i, vec i: %i, val: %f \n", y, x / 8, x % 8, rec_sum_vec[y][x / 8][x % 8]);
+            sum_square_vec[y][x / 8][x % 8] = square_sum;
         }
+        std::cout << "\n\n";
     }
+    
+    std::cout << "vector regs: \n";
     auto end = std::chrono::high_resolution_clock::now();
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x += 8) {
+            for (int i = 0; i < 8; i++) {
+                std::cout << rec_sum_vec[y][x / 8][i] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
+    
+    std::cout << "\n\n  right asnwer fr fr\n";
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            std::cout << rec_sum[y][x] << " ";
+        }
+        std::cout << "\n";
+    }
 
     ResultD res[22];
     double min_thread[22];
