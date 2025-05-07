@@ -154,7 +154,7 @@ Result segment(int ny, int nx, const float *data) {
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
                             for (int i= 0; i < 8; i++) {
-                                rec_size[vert_y][i] = (8 * x1 + i - x0 > 0) ? (8 * x1 + i - x0 + 1) * (y1-(y0 + vert_y) + 1) : 1;
+                                rec_size[vert_y][i] = (8 * x1 + i - x0 + 1 > 0) ? (8 * x1 + i - x0 + 1) * (y1-(y0 + vert_y) + 1) : 1;
                                 background_size[vert_y][i] = ny * nx - rec_size[vert_y][i];
                             }
                         }
@@ -168,8 +168,8 @@ Result segment(int ny, int nx, const float *data) {
                         background_sse = background_sum[vert_y] - ((background_sum[vert_y] * background_sum[vert_y]) / background_size[vert_y]);
                         total_sse[vert_y] = rec_sse + background_sse;
                             if (x1 == 0 && x0 == 0) {
-                                printf("\n\ny1: %i, y0: %i , sum: %f\n", y1, y0 + vert_y, sum[vert_y][0]);
-                                printf("x1: %i, x0: %i, rec_sse: %f, background_sse: %f,   i + x1 * 8 >= nx: %d\n", x1 * 8 + 0, x0, rec_sse[0], background_sse[0], 0 + x1 * 8 >= nx);
+                                //printf("\n\ny1: %i, y0: %i , sum: %f\n", y1, y0 + vert_y, sum[vert_y][0]);
+                                //printf("x1: %i, x0: %i, rec_sse: %f, background_sse: %f,   i + x1 * 8 >= nx: %d\n", x1 * 8 + 0, x0, rec_sse[0], background_sse[0], 0 + x1 * 8 >= nx);
                             }
                         for (int i = 0; i < 8; i++) {
                             if (x0 > x1 * 8 + i || i + x1 * 8 >= nx) continue;
