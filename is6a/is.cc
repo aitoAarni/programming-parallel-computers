@@ -94,7 +94,7 @@ Result segment(int ny, int nx, const float *data) {
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
                 for (int y0 = 0; y0 <= y1; y0 += vert_par){
-                    for (int x0 = 0; x0  <= (x1 ) / 8; x0++) {
+                    for (int x0 = 0; x0  <= x1 / 8; x0++) {
                         float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
 
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
