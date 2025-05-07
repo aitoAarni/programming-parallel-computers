@@ -91,14 +91,21 @@ Result segment(int ny, int nx, const float *data) {
         float lowest_score = 10e+5;
         #pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
-            for (int x1 = 0; x1 < (7 + nx) / 8; x1++) {
-                for (int y0 = 0; y0 <= y1; y0 += vert_par){
+            for (int y0 = 0; y0 <= y1; y0 += vert_par){
+                for (int x1 = 0; x1 < (7 + nx) / 8; x1++) {
                     for (int x0 = 0; x0  <= x1 * 8 + 8; x0++) {
 
                         float long_rec_sum_float = x0 > 0 ? rec_sum[y1][x0 - 1] : 0;                              
-
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
+
+                            if (y0 + vert_y > 0) {
+                                wide_rec_sum[vert_y] = rec_sum_vec[y0-1+vert_y][x1];
+                            } else {
+                                for (int i = 0; i < 8; i++) {
+                                    wide_rec_sum[vert_y][i] = 0;
+                                }
+                            }
                             sum[vert_y] = rec_sum_vec[y1][x1];
 
 
@@ -118,10 +125,8 @@ Result segment(int ny, int nx, const float *data) {
                             }
                             sum[vert_y] -= long_rec_sum[vert_y];
                         
-                            if (y0 + vert_y > 0) {
-                                sum[vert_y] += small_rec_sum[vert_y];
-                                sum[vert_y] -= rec_sum_vec[y0-1+vert_y][x1];
-                            }
+                            sum[vert_y] += small_rec_sum[vert_y];
+                            sum[vert_y] -= wide_rec_sum[vert_y];
                         }
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
