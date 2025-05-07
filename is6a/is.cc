@@ -36,7 +36,7 @@ This is the function you need to implement. Quick reference:
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     auto start = std::chrono::high_resolution_clock::now();
-    constexpr int vert_par = 4;
+    constexpr int vert_par = 1;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
@@ -52,7 +52,7 @@ Result segment(int ny, int nx, const float *data) {
             }
             sum += data[baseIndex];
             rec_sum[y][x] = sum;
-            rec_sum_vec[y][(x + 1) / 8][(x + 1) % 8] = sum;
+            rec_sum_vec[y][x / 8][x % 8] = sum;
         }
     }
     auto end = std::chrono::high_resolution_clock::now();
@@ -63,15 +63,30 @@ Result segment(int ny, int nx, const float *data) {
         min_thread[i] = 10e+5;
     }
 
-    
+    printf("right answer \n");
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            std::cout << rec_sum[y][x] << " ";
+        }
+        std::cout << "\n";
+    }
 
+    printf("\n\n vec regs one\n");
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < (7 + nx) / 8; x++) {
+            for (int i = 0; i < 8; i++) {
+                std::cout << rec_sum_vec[y][x][i] << " ";
+            }
+        }
+        std::cout << "\n";
+    }
     const float o = rec_sum[ny - 1][nx - 1];
     const float8_t total_sum = {o, o, o, o, o, o, o, o};
     auto start2 = std::chrono::high_resolution_clock::now();
 
-    #pragma omp parallel
+    //#pragma omp parallel
     {
-
+        float8_t long_rec_sum[vert_par];
         float8_t total_sse[vert_par];
         float8_t sum[vert_par];
         float8_t rec_size[vert_par];
@@ -80,48 +95,55 @@ Result segment(int ny, int nx, const float *data) {
         float8_t small_rec_sum[vert_par];
         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
             sum[vert_y] = f8Zero;
+            long_rec_sum[vert_y] = f8Zero;
             rec_size[vert_y] = f8Zero;
             wide_rec_sum[vert_y] = f8Zero;
             small_rec_sum[vert_y] = f8Zero;
-        
+            background_size[vert_y] = f8Zero;
         }
         float8_t background_sum[vert_par];
         float8_t rec_sse;
         float8_t background_sse;
         int thread = omp_get_thread_num();
         float lowest_score = 10e+5;
-        #pragma omp for schedule(dynamic, 1)
+        //#pragma omp for schedule(dynamic, 1)
         for (int y1 = 0; y1 < ny; y1++) {
-            for (int x1 = 0; x1 < nx; x1++) {
+            for (int x1 = 0; x1 < (7 + nx) / 8; x1++) {
                 for (int y0 = 0; y0 <= y1; y0 += vert_par){
-                    for (int x0 = 0; x0  <= x1 / 8; x0++) {
-                        float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
+                    for (int x0 = 0; x0  <= x1 * 8 + 8; x0++) {
+                        // printf("\n\nx0 in start: %i\n", x0);
+                        float long_rec_sum_float = x0 > 0 ? rec_sum[y1][x0 - 1] : 0;                              
 
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
+                            sum[vert_y] = rec_sum_vec[y1][x1];
 
-                            float wide_rec_sum_float = y0 + vert_y > 0 ? rec_sum[y0 - 1 + vert_y][x1] : 0;
+
                             for (int i = 0; i < 8; i++) {
-                                sum[vert_y][i] = rec_sum[y1][x1];
-                                wide_rec_sum[vert_y][i] = wide_rec_sum_float;
+                                long_rec_sum[vert_y][i] = long_rec_sum_float;
                             }
-                            if (y0 + vert_y > 0) {
-                                small_rec_sum[vert_y] = rec_sum_vec[y0  + vert_y- 1][x0];
+
+                            if (y0 + vert_y > 0 && x0 - 1 > 0) {
+                                float s = rec_sum[y0 - 1 + vert_y][x0 - 1];
+                                for (int i = 0; i < 8; i++) {
+                                    small_rec_sum[vert_y][i] = s;
+                                }
                             } else {
                                 for (int i = 0; i < 8; i++) {
                                     small_rec_sum[vert_y][i] = 0;
                                 }
                             }
-                            
-                            sum[vert_y] -= wide_rec_sum[vert_y];
-                            sum[vert_y] -= long_rec_sum;
-                            sum[vert_y] += small_rec_sum[vert_y];
+
+                            sum[vert_y] -= long_rec_sum[vert_y];
+                            if (y0 + vert_y > 0) {
+                                sum[vert_y] += small_rec_sum[vert_y];
+                                sum[vert_y] -= rec_sum_vec[y0-1+vert_y][x1];
+                            }
                         }
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
-                            
                             if (vert_y + y0 > y1) continue;
                             for (int i= 0; i < 8; i++) {
-                                rec_size[vert_y][i] = (x1-x0 * 8+1 - i > 0) ? (x1- 8 * x0+1 - i) * (y1-(y0 + vert_y) + 1) : 1;
+                                rec_size[vert_y][i] = (8 * x1 + i - x0 > 0) ? (8 * x1 + i - x0 + 1) * (y1-(y0 + vert_y) + 1) : 1;
                                 background_size[vert_y][i] = ny * nx - rec_size[vert_y][i];
                             }
                         }
@@ -135,14 +157,16 @@ Result segment(int ny, int nx, const float *data) {
                         background_sse = background_sum[vert_y] - ((background_sum[vert_y] * background_sum[vert_y]) / background_size[vert_y]);
                         total_sse[vert_y] = rec_sse + background_sse;
                         for (int i = 0; i < 8; i++) {
-                            if (i + x0 * 8 > x1) continue;
+                            if (x0 > x1 * 8 + i || i + x1 * 8 >= nx) continue;
+                            printf("y1: %i, y0: %i , sum: %f", y1, y0 + vert_y, sum[vert_y][i]);
+                            printf("x1: %i, x0: %i, total_sse: %f,  i + x1 * 8 >= nx: %d\n", x1 * 8 + i, x0, total_sse[vert_y][i], i + x1 * 8 >= nx);
                             if (total_sse[vert_y][i] < lowest_score) {
                                 min_thread[thread] = total_sse[vert_y][i];                                                        
                                 lowest_score = total_sse[vert_y][i];
                                 res[thread].y0 = y0 + vert_y;
-                                res[thread].x0 = x0 * 8 + i;
+                                res[thread].x0 = x0;
                                 res[thread].y1 = y1 + 1;
-                                res[thread].x1 = x1 + 1;
+                                res[thread].x1 = x1 * 8 + i + 1;
                                 res[thread].inner = sum[vert_y][i] / rec_size[vert_y][i];
                                 res[thread].outer = background_sum[vert_y][i] / background_size[vert_y][i];
                             }
@@ -174,5 +198,6 @@ Result segment(int ny, int nx, const float *data) {
             result.outer[2] = res[i].outer;
         }
     }
-    return result;
+    // std::cout << result.inner[0] << " " <<  result.outer[1] << "\n";
+return result;
 }
