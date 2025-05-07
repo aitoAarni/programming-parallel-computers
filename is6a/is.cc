@@ -83,6 +83,7 @@ Result segment(int ny, int nx, const float *data) {
             rec_size[vert_y] = f8Zero;
             wide_rec_sum[vert_y] = f8Zero;
             small_rec_sum[vert_y] = f8Zero;
+        
         }
         float8_t background_sum[vert_par];
         float8_t rec_sse;
@@ -93,11 +94,12 @@ Result segment(int ny, int nx, const float *data) {
         for (int y1 = 0; y1 < ny; y1++) {
             for (int x1 = 0; x1 < nx; x1++) {
                 for (int y0 = 0; y0 <= y1; y0 += vert_par){
-                    for (int x0 = 0; x0  <= (x1 + 7) / 8; x0++) {
+                    for (int x0 = 0; x0  <= (x1 ) / 8; x0++) {
                         float8_t long_rec_sum = rec_sum_vec[y1][x0];                              
 
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
                             if (vert_y + y0 > y1) continue;
+
                             float wide_rec_sum_float = y0 + vert_y > 0 ? rec_sum[y0 - 1 + vert_y][x1] : 0;
                             for (int i = 0; i < 8; i++) {
                                 sum[vert_y][i] = rec_sum[y1][x1];
