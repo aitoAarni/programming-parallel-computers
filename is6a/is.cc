@@ -97,7 +97,7 @@ Result segment(int ny, int nx, const float *data) {
 
                         float long_rec_sum_float = x0 > 0 ? rec_sum[y1][x0 - 1] : 0;                              
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
-                            if (vert_y + y0 > y1) continue;
+                            if (vert_y + y0 >= ny) continue;
 
                             if (y0 + vert_y > 0) {
                                 wide_rec_sum[vert_y] = rec_sum_vec[y0-1+vert_y][x1];
@@ -129,7 +129,7 @@ Result segment(int ny, int nx, const float *data) {
                             sum[vert_y] -= wide_rec_sum[vert_y];
                         }
                         for (int vert_y = 0; vert_y < vert_par; vert_y++) {
-                            if (vert_y + y0 > y1) continue;
+                            if (vert_y + y0 >= py) continue;
                             for (int i= 0; i < 8; i++) {
                                 rec_size[vert_y][i] = (8 * x1 + i - x0 + 1 > 0) ? (8 * x1 + i - x0 + 1) * (y1-(y0 + vert_y) + 1) : 1;
                                 background_size[vert_y][i] = ny * nx - rec_size[vert_y][i];
