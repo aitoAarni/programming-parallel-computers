@@ -36,7 +36,7 @@ This is the function you need to implement. Quick reference:
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
     auto start = std::chrono::high_resolution_clock::now();
-    constexpr int vert_par = 2;
+    constexpr int vert_par = 4;
     for (int y = 0; y<ny; y++) {
         for (int x = 0; x < nx; x++) {
             int baseIndex = x*3 + y*nx*3;
