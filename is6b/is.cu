@@ -7,6 +7,38 @@ struct Result {
     float inner[3];
 };
 
+#include <cstdlib>
+#include <iostream>
+#include <cuda_runtime.h>
+
+static inline void check(cudaError_t err, const char* context) {
+    if (err != cudaSuccess) {
+        std::cerr << "CUDA error: " << context << ": "
+            << cudaGetErrorString(err) << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+}
+
+#define CHECK(x) check(x, #x)
+
+static inline int divup(int a, int b) {
+    return (a + b - 1)/b;
+}
+
+static inline int roundup(int a, int b) {
+    return divup(a, b) * b;
+}
+
+struct ResultD {
+    int y0;
+    int x0;
+    int y1;
+    int x1;
+    float outer;
+    float inner;
+};
+float rec_sum[600][600];
+float smallest_results[600][600];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -14,7 +46,70 @@ This is the function you need to implement. Quick reference:
 - color components: 0 <= c < 3
 - input: data[c + 3 * x + 3 * nx * y]
 */
+
+__global__ void mykernel(float *rec_sum, float *result, int  nx, int  ny) {
+    int x1 = blockIdx.x;
+    int y1 = blockIdx.y;
+    int threadX = threadIdx.x;
+    int threadY = threadIdx.y;
+    int width = blockDim.x;
+    int height = blockDim.y;
+    __shared__ float minShared[8 * 32];
+    float wholeRec = rec_sum[y1 * nx + x1]; 
+    for (int y0 = 0 + threadY; y0 <= y1; y0 += height) {
+        for (int x0 = 0 + threadX; x0 <= x1; x0 += width) {
+            float sum = wholeRec;
+            if (y0 > 0) {
+                sum -= rec_sum[(y0 - 1) * nx + x1];
+            }
+            if (x0 > 0) {
+                sum -= rec_sum[y1 * nx + x0 - 1];
+            }
+            
+            if (x0 > 0 && y0 > 0) {
+                sum += rec_sum[(y0 - 1) * nx + x0 - 1];
+            }
+        
+            
+        }
+    }
+
+
+}
+
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
-    return result;
+    constexpr int vert_par = 4;
+    for (int y = 0; y<ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            int baseIndex = x*3 + y*nx*3;
+            float sum = 0;
+            if (x > 0) {
+                sum += rec_sum[y][x-1];
+            }
+            if (y > 0) {
+                sum += rec_sum[y-1][x];
+                if (x > 0) {
+                    sum -= rec_sum[y-1][x-1];
+                }
+            }
+            sum += data[baseIndex];
+            rec_sum[y][x] = sum;
+        }
+    }
+
+    float* dGPU = NULL;
+    float* rGPU = NULL;
+    CHECK(cudaMalloc((void**)&dGPU, nx * ny * sizeof(float)));
+    CHECK(cudaMalloc((void**)&rGPU, nx * ny * sizeof(float)));
+    CHECK(cudaMemcpy(dGPU, rec_sum, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
+
+    dim3 dimBlock(32, 8);
+    dim3 dimGrid(nx, ny);
+    mykernel<<<dimGrid, dimBlock>>>(dGPU, rGPU, nx, ny);
+
+    CHECK(cudaGetLastError());
+    CHECK(cudaMemcpy(smallest_results, rGPU, nx * ny * sizeof(float), cudaMemcpyDeviceToHost));
+    CHECK(cudaFree(dGPU));
+    CHECK(cudaFree(rGPU));
 }
