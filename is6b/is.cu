@@ -48,14 +48,17 @@ This is the function you need to implement. Quick reference:
 */
 
 __global__ void mykernel(float *rec_sum, float *result, int  nx, int  ny) {
+    __shared__ float minShared[8 * 32];
     int x1 = blockIdx.x;
     int y1 = blockIdx.y;
     int threadX = threadIdx.x;
     int threadY = threadIdx.y;
     int width = blockDim.x;
     int height = blockDim.y;
-    __shared__ float minShared[8 * 32];
+    ResultD smallest;
+    minShared[threadX + threadY * 32] = 10e5;
     float wholeRec = rec_sum[y1 * nx + x1]; 
+    float totalSum = rec_sum[(ny - 1) * nx + nx - 1];
     for (int y0 = 0 + threadY; y0 <= y1; y0 += height) {
         for (int x0 = 0 + threadX; x0 <= x1; x0 += width) {
             float sum = wholeRec;
@@ -69,7 +72,23 @@ __global__ void mykernel(float *rec_sum, float *result, int  nx, int  ny) {
             if (x0 > 0 && y0 > 0) {
                 sum += rec_sum[(y0 - 1) * nx + x0 - 1];
             }
-        
+            
+            int recArea = (x1 - x0 + 1) * (y1 - y0 + 1);
+            int backgroundArea = nx * ny - recArea;
+            
+            float backgroundSum = totalSum - sum;
+            float rec_sse = sum - sum * sum / recArea;
+            float background_sse = backgroundSum  - backgroundSum * backgroundSum / backgroundArea;
+            float sse = rec_sse + background_sse;
+            if (sse < minShared[threadX + threadY * 32]) {
+                minShared[threadX + threadY * 32] = sse;
+                smallest.y0 = y0;
+                smallest.x0 = x0;
+                smallest.y1 = y1 + 1;
+                smallest.x1 = x1 + 1;
+                smallest.outer = backgroundSum;
+                smallest.inner = sum;
+            }
             
         }
     }
