@@ -38,8 +38,8 @@ struct ResultD {
     float inner;
     float sse;
 };
-float rec_sum[600][600];
-float smallest_results[600][600];
+float rec_sum[600 * 600];
+ResultD smallest_results[600 * 600];
 /*
 This is the function you need to implement. Quick reference:
 - x coordinates: 0 <= x < nx
@@ -62,6 +62,9 @@ __global__ void mykernel(float *rec_sum, ResultD *result, int  nx, int  ny) {
     float totalSum = rec_sum[(ny - 1) * nx + nx - 1];
     for (int y0 = 0 + threadY; y0 <= y1; y0 += height) {
         for (int x0 = 0 + threadX; x0 <= x1; x0 += width) {
+            if (y0 > y1 || x0 > x1) {
+                continue;
+            }
             float sum = wholeRec;
             if (y0 > 0) {
                 sum -= rec_sum[(y0 - 1) * nx + x1];
@@ -73,13 +76,21 @@ __global__ void mykernel(float *rec_sum, ResultD *result, int  nx, int  ny) {
             if (x0 > 0 && y0 > 0) {
                 sum += rec_sum[(y0 - 1) * nx + x0 - 1];
             }
-            
+            if (x0 == 0 && y0 == 0 && y1 == 2 && x1 == 0) {
+                // printf("whole rec: %f, sum: %f\n", wholeRec, sum);
+            }
             int recArea = (x1 - x0 + 1) * (y1 - y0 + 1);
+
             int backgroundArea = nx * ny - recArea;
             
+            
+            if (backgroundArea == 0) {
+                backgroundArea = 1;
+            }
             float backgroundSum = totalSum - sum;
             float rec_sse = sum - sum * sum / recArea;
             float background_sse = backgroundSum  - backgroundSum * backgroundSum / backgroundArea;
+            printf("x0: %d, y0: %d, x1: %d, y1: %d, rec_sse: %f, background_sse: %f\n", x0, y0, x1, y1, rec_sse, background_sse);
             float sse = rec_sse + background_sse;
             if (sse < smallest.sse) {
                 smallest.sse = sse;
@@ -124,23 +135,23 @@ Result segment(int ny, int nx, const float *data) {
             int baseIndex = x*3 + y*nx*3;
             float sum = 0;
             if (x > 0) {
-                sum += rec_sum[y][x-1];
+                sum += rec_sum[y * nx + x-1];
             }
             if (y > 0) {
-                sum += rec_sum[y-1][x];
+                sum += rec_sum[(y-1) * nx + x];
                 if (x > 0) {
-                    sum -= rec_sum[y-1][x-1];
+                    sum -= rec_sum[(y-1) * nx + x-1];
                 }
             }
             sum += data[baseIndex];
-            rec_sum[y][x] = sum;
+            rec_sum[y * nx + x] = sum;
         }
     }
 
     float* dGPU = NULL;
     ResultD* rGPU = NULL;
     CHECK(cudaMalloc((void**)&dGPU, nx * ny * sizeof(float)));
-    CHECK(cudaMalloc((void**)&rGPU, nx * ny * sizeof(float)));
+    CHECK(cudaMalloc((void**)&rGPU, nx * ny * sizeof(ResultD)));
     CHECK(cudaMemcpy(dGPU, rec_sum, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
 
     dim3 dimBlock(32, 8);
@@ -148,7 +159,30 @@ Result segment(int ny, int nx, const float *data) {
     mykernel<<<dimGrid, dimBlock>>>(dGPU, rGPU, nx, ny);
 
     CHECK(cudaGetLastError());
-    CHECK(cudaMemcpy(smallest_results, rGPU, nx * ny * sizeof(float), cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(smallest_results, rGPU, nx * ny * sizeof(ResultD), cudaMemcpyDeviceToHost));
     CHECK(cudaFree(dGPU));
     CHECK(cudaFree(rGPU));
+
+    int smallestCoord = 0;
+    float currentSmallest = 10e5;
+    for (int y = 0; y < ny; y++) {
+        for (int x = 0; x < nx; x++) {
+            if (smallest_results[y * nx + x].sse < currentSmallest) {
+                currentSmallest = smallest_results[y * nx + x].sse;
+                smallestCoord = y * nx + x;
+            }
+        }
+    }
+    ResultD smallest = smallest_results[smallestCoord]; 
+    result.y0 = smallest.y0;
+    result.x0 = smallest.x0;
+    result.y1 = smallest.y1;
+    result.x1 = smallest.x1;
+    result.outer[0] = smallest.outer;
+    result.outer[1] = smallest.outer;
+    result.outer[2] = smallest.outer;
+    result.inner[0] = smallest.inner;
+    result.inner[1] = smallest.inner;
+    result.inner[2] = smallest.inner;
+    return result;
 }
