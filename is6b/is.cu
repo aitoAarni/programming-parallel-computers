@@ -36,6 +36,7 @@ struct ResultD {
     int x1;
     float outer;
     float inner;
+    float sse;
 };
 float rec_sum[600][600];
 float smallest_results[600][600];
@@ -47,7 +48,7 @@ This is the function you need to implement. Quick reference:
 - input: data[c + 3 * x + 3 * nx * y]
 */
 
-__global__ void mykernel(float *rec_sum, float *result, int  nx, int  ny) {
+__global__ void mykernel(float *rec_sum, ResultD *result, int  nx, int  ny) {
     __shared__ float minShared[8 * 32];
     int x1 = blockIdx.x;
     int y1 = blockIdx.y;
@@ -56,7 +57,7 @@ __global__ void mykernel(float *rec_sum, float *result, int  nx, int  ny) {
     int width = blockDim.x;
     int height = blockDim.y;
     ResultD smallest;
-    minShared[threadX + threadY * 32] = 10e5;
+    smallest.sse = 10e5;
     float wholeRec = rec_sum[y1 * nx + x1]; 
     float totalSum = rec_sum[(ny - 1) * nx + nx - 1];
     for (int y0 = 0 + threadY; y0 <= y1; y0 += height) {
@@ -80,8 +81,8 @@ __global__ void mykernel(float *rec_sum, float *result, int  nx, int  ny) {
             float rec_sse = sum - sum * sum / recArea;
             float background_sse = backgroundSum  - backgroundSum * backgroundSum / backgroundArea;
             float sse = rec_sse + background_sse;
-            if (sse < minShared[threadX + threadY * 32]) {
-                minShared[threadX + threadY * 32] = sse;
+            if (sse < smallest.sse) {
+                smallest.sse = sse;
                 smallest.y0 = y0;
                 smallest.x0 = x0;
                 smallest.y1 = y1 + 1;
@@ -89,12 +90,31 @@ __global__ void mykernel(float *rec_sum, float *result, int  nx, int  ny) {
                 smallest.outer = backgroundSum;
                 smallest.inner = sum;
             }
-            
         }
     }
+    
+    minShared[threadX + threadY * 32] = smallest.sse;
+    __syncthreads();
+    float smallestSSE = 10e5;
+    int smallestIndex = -1;
+    for (int i = 0; i < width * height; i++) {
+        if (minShared[i] < smallestSSE) {
+            smallestSSE = minShared[i];
+            smallestIndex = i;
+        }
+    }
+    __syncthreads();
+    if (threadY == smallestIndex / width && threadX == smallestIndex % width) {
+        result[x1 + y1 * nx].sse = smallest.sse;
+        result[x1 + y1 * nx].y0 = smallest.y0;
+        result[x1 + y1 * nx].x0 = smallest.x0;
+        result[x1 + y1 * nx].y1 = smallest.y1;
+        result[x1 + y1 * nx].x1 = smallest.x1;
+        result[x1 + y1 * nx].outer = smallest.outer;
+        result[x1 + y1 * nx].inner = smallest.inner;
+    }
+} 
 
-
-}
 
 Result segment(int ny, int nx, const float *data) {
     Result result{0, 0, 0, 0, {0, 0, 0}, {0, 0, 0}};
@@ -118,7 +138,7 @@ Result segment(int ny, int nx, const float *data) {
     }
 
     float* dGPU = NULL;
-    float* rGPU = NULL;
+    ResultD* rGPU = NULL;
     CHECK(cudaMalloc((void**)&dGPU, nx * ny * sizeof(float)));
     CHECK(cudaMalloc((void**)&rGPU, nx * ny * sizeof(float)));
     CHECK(cudaMemcpy(dGPU, rec_sum, nx * ny * sizeof(float), cudaMemcpyHostToDevice));
