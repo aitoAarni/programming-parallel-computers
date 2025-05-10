@@ -98,8 +98,8 @@ __global__ void mykernel(float *rec_sum, ResultD *result, int  nx, int  ny) {
                 smallest.x0 = x0;
                 smallest.y1 = y1 + 1;
                 smallest.x1 = x1 + 1;
-                smallest.outer = backgroundSum;
-                smallest.inner = sum;
+                smallest.outer = backgroundSum / backgroundArea;
+                smallest.inner = sum / recArea;
             }
         }
     }
